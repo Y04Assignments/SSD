@@ -97,5 +97,5 @@ User input must be treated as literal text. Metacharacters must not break server
 ---
 
 ## Commit
-- **Commit Hash:** `98a59fe`
+- **Commit Hash:** `d107917` (earlier local iteration: `98a59fe`)
 - **Commit Message:** `fix(security): escape user input in station search regex`

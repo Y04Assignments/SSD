@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import crypto from 'crypto';
 import connectDB from './config/db.js';
 import session from 'express-session';
 import passport from './config/passport.js';
@@ -52,9 +53,12 @@ if (!sessionSecret && process.env.NODE_ENV === 'production') {
   throw new Error('FATAL: SESSION_SECRET or JWT_SECRET environment variable is required in production');
 }
 
+// In non-production, generate an ephemeral random secret if not provided in environment
+const devSecret = sessionSecret || crypto.randomBytes(32).toString('hex');
+
 app.use(
   session({
-    secret: sessionSecret || 'temporary_dev_session_secret',
+    secret: devSecret,
     resave: false,
     saveUninitialized: false,
   })

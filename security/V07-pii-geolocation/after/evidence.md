@@ -93,5 +93,5 @@ No personal identifiable information (emails, user IDs) or exact residential coo
 ---
 
 ## Commit
-- **Commit Hash:** `fe18196`
+- **Commit Hash:** `843b1af` (earlier local iteration: `fe18196`)
 - **Commit Message:** `fix(security): minimize public sell request location data`

@@ -138,5 +138,5 @@ Reset codes must be unguessable, hashed in the database, rate-limited against br
 ---
 
 ## Commit
-- **Commit Hash:** `edf744a`
+- **Commit Hash:** `f70aea2` (earlier local iteration: `edf744a`)
 - **Commit Message:** `fix(security): harden password reset token handling`

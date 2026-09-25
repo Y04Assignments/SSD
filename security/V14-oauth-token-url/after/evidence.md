@@ -90,5 +90,5 @@ Authentication tokens must never appear in URLs or browser console logs. SPAs re
 ---
 
 ## Commit
-- **Commit Hash:** `6043b65`
+- **Commit Hash:** `b06df01` (earlier local iteration: `6043b65`)
 - **Commit Message:** `fix(security): prevent OAuth token leakage through URLs and logs`

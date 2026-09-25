@@ -122,5 +122,5 @@ Requests to internal, private, loopback, and metadata destinations must be block
 ---
 
 ## Commit
-- **Commit Hash:** `fd26f80`
+- **Commit Hash:** `2015a97` (earlier local iteration: `fd26f80`)
 - **Commit Message:** `fix(security): prevent SSRF in product image resolver`
