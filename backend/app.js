@@ -10,7 +10,6 @@ import reviewRoutes from './src/routes/reviewRoutes.js';
 import userRoutes from './src/routes/userRoutes.js';
 import sellRequestRoutes from './src/routes/sellRequestRoutes.js';
 import productRoutes from './src/routes/productRoutes.js';
-import debugRoutes from './src/routes/debug.js';
 import authRoutes from './src/routes/auth.js';
 import adminRoutes from './src/routes/adminRoutes.js';
 import errorHandler from './middleware/errorHandler.js';
@@ -68,7 +67,6 @@ app.use('/api/reviews', reviewRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/sell-request', sellRequestRoutes);
 app.use('/api/products', productRoutes);
-app.use('/api/debug', debugRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 
