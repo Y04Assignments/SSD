@@ -9,7 +9,10 @@ const router = express.Router();
 export const oauthAuthCodes = new Map();
 
 // Google OAuth initiate
-router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+router.get(
+  '/google',
+  passport.authenticate('google', /** @type {any} */ ({ scope: ['profile', 'email'] }))
+);
 
 // Google OAuth callback
 router.get(
@@ -19,13 +22,16 @@ router.get(
   }),
   async (req, res) => {
     try {
+      /** @type {any} */
+      const user = req.user;
       const userData = {
-        id: req.user._id.toString(),
-        email: req.user.email,
-        name: req.user.name,
-        role: req.user.role,
+        id: user._id.toString(),
+        email: user.email,
+        name: user.name,
+        role: user.role,
       };
 
+      // @ts-ignore
       const token = jwt.sign(userData, process.env.JWT_SECRET, {
         expiresIn: process.env.JWT_EXPIRE || '30d',
       });

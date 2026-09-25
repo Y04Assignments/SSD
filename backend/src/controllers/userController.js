@@ -433,7 +433,7 @@ export const resetPassword = async (req, res) => {
     }
 
     // Check if account password reset is locked
-    if (user.passwordResetLockUntil && user.passwordResetLockUntil > Date.now()) {
+    if (user.passwordResetLockUntil && user.passwordResetLockUntil.getTime() > Date.now()) {
       return res.status(429).json({
         success: false,
         message: 'Too many failed attempts. Please request a new password reset.',
@@ -448,7 +448,7 @@ export const resetPassword = async (req, res) => {
     }
 
     // Check expiration
-    if (!user.passwordResetExpires || user.passwordResetExpires <= Date.now()) {
+    if (!user.passwordResetExpires || user.passwordResetExpires.getTime() <= Date.now()) {
       user.passwordResetToken = null;
       user.passwordResetExpires = null;
       user.passwordResetAttempts = 0;
