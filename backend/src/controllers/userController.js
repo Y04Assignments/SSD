@@ -48,7 +48,7 @@ export const register = async (req, res) => {
       return fail(res, { message: 'Validation errors', status: 400, errors: errors.array() });
     }
 
-    const { email, password, role } = req.body;
+    const { email, password } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -56,11 +56,11 @@ export const register = async (req, res) => {
       return fail(res, { message: 'User already exists with this email', status: 400 });
     }
 
-    // Create new user
+    // Create new user (strictly force role: 'user')
     const user = await User.create({
       email,
       password,
-      role: role || 'user',
+      role: 'user',
     });
 
     // Send verification email
