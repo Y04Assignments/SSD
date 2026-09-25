@@ -26,6 +26,7 @@ describe('V05: Google OAuth Security & Role Assignment Tests', () => {
     await handleGoogleAuth('mock-access-token', 'mock-refresh-token', profile, done);
 
     expect(done).toHaveBeenCalledWith(null, expect.any(Object));
+    /** @type {any} */
     const userArg = done.mock.calls[0][1];
     expect(userArg.role).toBe('user');
     expect(userArg.role).not.toBe('admin');
@@ -80,7 +81,7 @@ describe('V05: Google OAuth Security & Role Assignment Tests', () => {
       isEmailVerified: true,
       role: 'user',
       googleId: null,
-      save: jest.fn().mockResolvedValue(true),
+      save: jest.fn(async () => true),
     };
 
     const mockFindOne = jest.spyOn(User, 'findOne')
