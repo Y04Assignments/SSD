@@ -1,6 +1,16 @@
 //import Station from "../models/Station.js";
 import Station from '../models/ChargingStationModel.js';
 
+/**
+ * Escapes special regular expression metacharacters to treat user input as literal text.
+ * @param {string} str
+ * @returns {string}
+ */
+export const escapeRegex = str => {
+  if (typeof str !== 'string') return '';
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+};
+
 export const searchStations = async (req, res) => {
   try {
     const { search, district, status, connectorType } = req.query;
@@ -9,7 +19,7 @@ export const searchStations = async (req, res) => {
     const andConditions = [];
 
     if (search && search.trim() !== '') {
-      const searchRegex = new RegExp(search, 'i'); //case-insensitive regex for partial matching
+      const searchRegex = new RegExp(escapeRegex(search.trim()), 'i'); //case-insensitive regex for literal matching
       andConditions.push({
         $or: [{ name: searchRegex }, { address: searchRegex }, { 'connectors.type': searchRegex }],
       });
@@ -17,7 +27,7 @@ export const searchStations = async (req, res) => {
 
     //Filter by district, status, and connector type if provided
     if (district && district.trim() !== '') {
-      const districtRegex = new RegExp(district, 'i'); // partial search - why r you guys saving it as 'colombo district' </3 (adeesha)
+      const districtRegex = new RegExp(escapeRegex(district.trim()), 'i');
       andConditions.push({ district: districtRegex });
     }
 
@@ -76,7 +86,7 @@ export const distanceSearchStations = async (req, res) => {
     const andConditions = [];
 
     if (search && search.trim() !== '') {
-      const searchRegex = new RegExp(search, 'i'); //case-insensitive regex for partial matching
+      const searchRegex = new RegExp(escapeRegex(search.trim()), 'i'); //case-insensitive regex for literal matching
       andConditions.push({
         $or: [{ name: searchRegex }, { address: searchRegex }, { 'connectors.type': searchRegex }],
       });
@@ -84,7 +94,7 @@ export const distanceSearchStations = async (req, res) => {
 
     //Filter by district, status, and connector type if provided
     if (district && district.trim() !== '') {
-      const districtRegex = new RegExp(district, 'i'); // partial search - why r you guys saving it as 'colombo district' </3 (adeesha)
+      const districtRegex = new RegExp(escapeRegex(district.trim()), 'i');
       andConditions.push({ district: districtRegex });
     }
 
