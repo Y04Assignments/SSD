@@ -1,4 +1,5 @@
 import Product from '../models/Product.js';
+import { validateSafeUrl, safeFetch } from '../utils/ssrfValidator.js';
 
 const IMAGE_EXT_PATTERN = /\.(png|jpe?g|gif|webp|avif|svg)(\?.*)?$/i;
 
@@ -40,6 +41,7 @@ const isHttpUrl = value => {
 };
 
 export const resolveProductImageUrl = async (req, res) => {
+  let timeout;
   try {
     const sourceUrl = String(req.query?.url || '').trim();
 
@@ -47,42 +49,57 @@ export const resolveProductImageUrl = async (req, res) => {
       return res.status(400).json({ message: 'Please provide a valid image or webpage URL.' });
     }
 
+    const initialValidation = await validateSafeUrl(sourceUrl);
+    if (!initialValidation.valid) {
+      return res.status(400).json({
+        message: `Prohibited or unsafe URL: ${initialValidation.error}`,
+      });
+    }
+
     if (IMAGE_EXT_PATTERN.test(sourceUrl)) {
       return res.status(200).json({ imageUrl: sourceUrl, sourceUrl, resolved: false });
     }
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
+    timeout = setTimeout(() => controller.abort(), 10000);
 
     try {
-      const headResponse = await fetch(sourceUrl, {
+      const { response: headResponse, finalUrl: headFinalUrl } = await safeFetch(sourceUrl, {
         method: 'HEAD',
-        redirect: 'follow',
         signal: controller.signal,
       });
       const contentType = headResponse.headers.get('content-type') || '';
       if (contentType.toLowerCase().startsWith('image/')) {
         return res.status(200).json({
-          imageUrl: headResponse.url || sourceUrl,
+          imageUrl: headFinalUrl || sourceUrl,
           sourceUrl,
           resolved: false,
         });
       }
-    } catch {
+    } catch (headErr) {
+      if (headErr.isSsrfBlocked) {
+        return res.status(400).json({ message: headErr.message });
+      }
       // Ignore HEAD failures and fall back to HTML parsing.
     }
 
-    const pageResponse = await fetch(sourceUrl, {
+    const { response: pageResponse, finalUrl: pageFinalUrl } = await safeFetch(sourceUrl, {
       method: 'GET',
-      redirect: 'follow',
       signal: controller.signal,
     });
     const html = await pageResponse.text();
-    const extracted = extractImageFromHtml(html, pageResponse.url || sourceUrl);
+    const extracted = extractImageFromHtml(html, pageFinalUrl || sourceUrl);
 
     if (!extracted) {
       return res.status(400).json({
         message: 'No preview image found on that page. Please paste a direct image link.',
+      });
+    }
+
+    const extractedValidation = await validateSafeUrl(extracted);
+    if (!extractedValidation.valid) {
+      return res.status(400).json({
+        message: `Extracted preview image URL is prohibited: ${extractedValidation.error}`,
       });
     }
 
@@ -92,8 +109,13 @@ export const resolveProductImageUrl = async (req, res) => {
       resolved: true,
     });
   } catch (error) {
+    if (error.isSsrfBlocked) {
+      return res.status(400).json({ message: error.message });
+    }
     console.error('Resolve product image URL error:', error);
     return res.status(500).json({ message: 'Unable to resolve image URL right now.' });
+  } finally {
+    if (timeout) clearTimeout(timeout);
   }
 };
 
