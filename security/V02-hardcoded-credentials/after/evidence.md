@@ -96,5 +96,5 @@ No cleartext credentials in source code; secrets must be provided via environmen
 ---
 
 ## Commit
-- **Commit Hash:** `f13eed8`
+- **Commit Hash:** `8feb865` (earlier local iteration: `f13eed8`)
 - **Commit Message:** `fix(security): remove hardcoded credentials and insecure secret fallbacks`

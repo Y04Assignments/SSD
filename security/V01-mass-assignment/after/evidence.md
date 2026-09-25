@@ -80,4 +80,4 @@ Content-Type: application/json
 
 **Result:** **PASS**  
 **Regression Test:** Executed `npm test` across all 11 backend test suites (58 passing tests). Normal user registration, login, and authorization validation remained fully functional.  
-**Commit:** `fix(security): prevent role mass assignment during registration`
+**Commit:** `32ef852` — `fix(security): prevent role mass assignment during registration`

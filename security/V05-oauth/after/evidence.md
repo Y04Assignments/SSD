@@ -76,5 +76,5 @@ Third-party OAuth identity providers must never automatically provision administ
 ---
 
 ## Commit
-- **Commit Hash:** `f2f704c`
+- **Commit Hash:** `d0c7764` (earlier local iteration: `f2f704c`)
 - **Commit Message:** `fix(security): prevent admin assignment during OAuth registration`

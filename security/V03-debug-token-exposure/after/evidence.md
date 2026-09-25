@@ -53,4 +53,4 @@ Host: 127.0.0.1:5001
 
 **Result:** **PASS**  
 **Regression Test:** Verified `npm test` across all 11 test suites; legitimate verification endpoint tests (`userAuth.test.js`) and API integration tests passed without regression.  
-**Commit:** `fix(security): remove public verification token debug endpoints`
+**Commit:** `1576a8a` — `fix(security): remove public verification token debug endpoints`
