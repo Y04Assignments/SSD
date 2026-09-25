@@ -23,7 +23,10 @@ const logError = (message, error) => {
 
 // Generate JWT token
 const generateToken = id => {
-  const secret = process.env.JWT_SECRET || 'fallback_secret';
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('JWT_SECRET is not configured in environment variables');
+  }
   // @ts-ignore
   return jwt.sign({ id }, secret, {
     expiresIn: process.env.JWT_EXPIRE || '30d',

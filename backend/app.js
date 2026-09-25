@@ -47,9 +47,14 @@ app.use(
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+const sessionSecret = process.env.SESSION_SECRET || process.env.JWT_SECRET;
+if (!sessionSecret && process.env.NODE_ENV === 'production') {
+  throw new Error('FATAL: SESSION_SECRET or JWT_SECRET environment variable is required in production');
+}
+
 app.use(
   session({
-    secret: process.env.JWT_SECRET || 'fallback_secret',
+    secret: sessionSecret || 'temporary_dev_session_secret',
     resave: false,
     saveUninitialized: false,
   })
