@@ -51,6 +51,14 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    passwordResetAttempts: {
+      type: Number,
+      default: 0,
+    },
+    passwordResetLockUntil: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,
