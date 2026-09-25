@@ -1,24 +1,34 @@
 import SellRequest from '../models/SellRequest.js';
 
-// Public list for map display (active offers only)
+// Public list for map display (active offers only - data minimized)
 export const getActiveSellRequests = async (req, res) => {
   try {
     const rawRequests = await SellRequest.find({ status: 'Pending' })
       .sort({ createdAt: -1 })
-      .select('resident energyAmount location comment status createdAt')
-      .populate('resident', 'name email');
+      .select('energyAmount location comment status createdAt')
+      .lean();
 
     const requests = rawRequests.map(request => {
-      const residentName = request.resident?.name?.trim();
-      const residentEmail = request.resident?.email || '';
-      const username = residentName || residentEmail.split('@')[0] || 'User';
+      const coords = request.location?.coordinates;
+      // Fuzz coordinates to 2 decimal places (~1.1km area) to prevent exact residential tracking
+      const fuzzedLocation =
+        coords && Array.isArray(coords) && coords.length === 2
+          ? {
+              type: 'Point',
+              coordinates: [
+                Math.round(Number(coords[0]) * 100) / 100,
+                Math.round(Number(coords[1]) * 100) / 100,
+              ],
+            }
+          : request.location;
+
+      const sellerSuffix = request._id ? request._id.toString().slice(-4) : 'Resident';
 
       return {
         _id: request._id,
-        username,
-        resident: request.resident,
+        username: `Solar Seller #${sellerSuffix}`,
         energyAmount: request.energyAmount,
-        location: request.location,
+        location: fuzzedLocation,
         comment: request.comment,
         status: request.status,
         createdAt: request.createdAt,
