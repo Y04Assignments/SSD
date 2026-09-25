@@ -20,8 +20,8 @@ const createTransporter = () => {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS,
     },
-    debug: true, // Show debug output
-    logger: true, // Log activity
+    debug: false,
+    logger: false,
   });
 };
 
@@ -33,28 +33,8 @@ const generateVerificationToken = () => {
 // Send verification email
 export const sendVerificationEmail = async user => {
   try {
-    // Use hardcoded credentials for now (in production, use .env)
-    const emailUser = 'nadeesf23@gmail.com';
-    const emailPass = 'nictbifwbraxhvcn';
-
-    logInfo(`Attempting to send email to: ${user.email}`);
-
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: emailUser,
-        pass: emailPass,
-      },
-      debug: false,
-      logger: false,
-    });
-
-    // Verify transporter configuration
-    await transporter.verify();
-    logInfo('Transporter verified successfully');
-
     const verificationToken = generateVerificationToken();
-    const verificationUrl = `http://localhost:3000/verify-email/${verificationToken}`;
+    const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email/${verificationToken}`;
 
     // Update user with verification token
     user.emailVerificationToken = verificationToken;
@@ -63,8 +43,22 @@ export const sendVerificationEmail = async user => {
 
     logInfo(`Saved verification token for ${user.email}`);
 
+    // If email credentials are not configured, skip outbound email
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+      logInfo('EMAIL_USER or EMAIL_PASS not configured. Skipping verification email transmission.');
+      return true;
+    }
+
+    logInfo(`Attempting to send email to: ${user.email}`);
+
+    const transporter = createTransporter();
+
+    // Verify transporter configuration
+    await transporter.verify();
+    logInfo('Transporter verified successfully');
+
     const mailOptions = {
-      from: `"SolarCharge Finder" <${emailUser}>`,
+      from: `"SolarCharge Finder" <${process.env.EMAIL_USER}>`,
       to: user.email,
       subject: 'Email Verification - SolarCharge Finder',
       html: `
@@ -161,24 +155,18 @@ export const sendWelcomeEmail = async user => {
 // Send password reset email
 export const sendPasswordResetEmail = async (user, resetCode) => {
   try {
-    // Use hardcoded credentials for now (in production, use .env)
-    const emailUser = 'nadeesf23@gmail.com';
-    const emailPass = 'nictbifwbraxhvcn';
+    // If email credentials are not configured, skip outbound email
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+      logInfo('EMAIL_USER or EMAIL_PASS not configured. Skipping password reset email transmission.');
+      return true;
+    }
 
     logInfo(`Attempting to send password reset email to: ${user.email}`);
 
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: emailUser,
-        pass: emailPass,
-      },
-      debug: false,
-      logger: false,
-    });
+    const transporter = createTransporter();
 
     const mailOptions = {
-      from: `"SolarCharge Finder" <${emailUser}>`,
+      from: `"SolarCharge Finder" <${process.env.EMAIL_USER}>`,
       to: user.email,
       subject: 'Password Reset Code - SolarCharge Finder',
       html: `

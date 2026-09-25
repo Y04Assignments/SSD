@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import crypto from 'crypto';
 import connectDB from './config/db.js';
 import session from 'express-session';
 import passport from './config/passport.js';
@@ -10,7 +11,6 @@ import reviewRoutes from './src/routes/reviewRoutes.js';
 import userRoutes from './src/routes/userRoutes.js';
 import sellRequestRoutes from './src/routes/sellRequestRoutes.js';
 import productRoutes from './src/routes/productRoutes.js';
-import debugRoutes from './src/routes/debug.js';
 import authRoutes from './src/routes/auth.js';
 import adminRoutes from './src/routes/adminRoutes.js';
 import errorHandler from './middleware/errorHandler.js';
@@ -48,9 +48,17 @@ app.use(
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+const sessionSecret = process.env.SESSION_SECRET || process.env.JWT_SECRET;
+if (!sessionSecret && process.env.NODE_ENV === 'production') {
+  throw new Error('FATAL: SESSION_SECRET or JWT_SECRET environment variable is required in production');
+}
+
+// In non-production, generate an ephemeral random secret if not provided in environment
+const devSecret = sessionSecret || crypto.randomBytes(32).toString('hex');
+
 app.use(
   session({
-    secret: process.env.JWT_SECRET || 'fallback_secret',
+    secret: devSecret,
     resave: false,
     saveUninitialized: false,
   })
@@ -68,7 +76,6 @@ app.use('/api/reviews', reviewRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/sell-request', sellRequestRoutes);
 app.use('/api/products', productRoutes);
-app.use('/api/debug', debugRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 

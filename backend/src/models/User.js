@@ -13,7 +13,7 @@ const userSchema = new mongoose.Schema(
       unique: true,
       lowercase: true,
       trim: true,
-      match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email'],
+      match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,})+$/, 'Please enter a valid email'],
     },
     googleId: {
       type: String,
@@ -29,7 +29,7 @@ const userSchema = new mongoose.Schema(
     role: {
       type: String,
       enum: ['user', 'admin'],
-      default: 'admin',
+      default: 'user',
     },
     isEmailVerified: {
       type: Boolean,
@@ -48,6 +48,14 @@ const userSchema = new mongoose.Schema(
       default: null,
     },
     passwordResetExpires: {
+      type: Date,
+      default: null,
+    },
+    passwordResetAttempts: {
+      type: Number,
+      default: 0,
+    },
+    passwordResetLockUntil: {
       type: Date,
       default: null,
     },

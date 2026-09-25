@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
 import User from '../models/User.js';
@@ -22,7 +23,10 @@ const logError = (message, error) => {
 
 // Generate JWT token
 const generateToken = id => {
-  const secret = process.env.JWT_SECRET || 'fallback_secret';
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('JWT_SECRET is not configured in environment variables');
+  }
   // @ts-ignore
   return jwt.sign({ id }, secret, {
     expiresIn: process.env.JWT_EXPIRE || '30d',
@@ -48,7 +52,7 @@ export const register = async (req, res) => {
       return fail(res, { message: 'Validation errors', status: 400, errors: errors.array() });
     }
 
-    const { email, password, role } = req.body;
+    const { email, password } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -56,11 +60,11 @@ export const register = async (req, res) => {
       return fail(res, { message: 'User already exists with this email', status: 400 });
     }
 
-    // Create new user
+    // Create new user (strictly force role: 'user')
     const user = await User.create({
       email,
       password,
-      role: role || 'user',
+      role: 'user',
     });
 
     // Send verification email
@@ -352,12 +356,17 @@ export const forgotPassword = async (req, res) => {
       });
     }
 
-    // Generate 6-digit reset code
-    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+    // Generate cryptographically secure 6-digit reset code
+    const resetCode = crypto.randomInt(100000, 1000000).toString();
 
-    // Save reset code and expiry to user
-    user.passwordResetToken = resetCode;
+    // Hash reset code with SHA-256 before storing in database
+    const hashedResetCode = crypto.createHash('sha256').update(resetCode).digest('hex');
+
+    // Save hashed reset code, expiry, and reset attempt counter
+    user.passwordResetToken = hashedResetCode;
     user.passwordResetExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    user.passwordResetAttempts = 0;
+    user.passwordResetLockUntil = null;
     await user.save();
 
     // Send password reset email
@@ -414,12 +423,7 @@ export const resetPassword = async (req, res) => {
       });
     }
 
-    // Find user by email and valid reset code
-    const user = await User.findOne({
-      email,
-      passwordResetToken: resetCode,
-      passwordResetExpires: { $gt: Date.now() },
-    });
+    const user = await User.findOne({ email });
 
     if (!user) {
       return res.status(400).json({
@@ -428,10 +432,80 @@ export const resetPassword = async (req, res) => {
       });
     }
 
-    // Update password
+    // Check if account password reset is locked
+    if (user.passwordResetLockUntil && user.passwordResetLockUntil > Date.now()) {
+      return res.status(429).json({
+        success: false,
+        message: 'Too many failed attempts. Please request a new password reset.',
+      });
+    }
+
+    if (!user.passwordResetToken) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired reset code',
+      });
+    }
+
+    // Check expiration
+    if (!user.passwordResetExpires || user.passwordResetExpires <= Date.now()) {
+      user.passwordResetToken = null;
+      user.passwordResetExpires = null;
+      user.passwordResetAttempts = 0;
+      await user.save();
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired reset code',
+      });
+    }
+
+    const MAX_ATTEMPTS = 5;
+    if (user.passwordResetAttempts >= MAX_ATTEMPTS) {
+      user.passwordResetToken = null;
+      user.passwordResetExpires = null;
+      user.passwordResetAttempts = 0;
+      user.passwordResetLockUntil = new Date(Date.now() + 15 * 60 * 1000);
+      await user.save();
+      return res.status(429).json({
+        success: false,
+        message: 'Too many failed attempts. Reset code has been invalidated. Please request a new one.',
+      });
+    }
+
+    // Hash provided code and compare with stored hash using constant-time comparison
+    const hashedInput = crypto.createHash('sha256').update(String(resetCode).trim()).digest('hex');
+    const storedBuf = Buffer.from(user.passwordResetToken || '');
+    const inputBuf = Buffer.from(hashedInput);
+
+    const isMatch =
+      storedBuf.length === inputBuf.length &&
+      crypto.timingSafeEqual(storedBuf, inputBuf);
+
+    if (!isMatch) {
+      user.passwordResetAttempts = (user.passwordResetAttempts || 0) + 1;
+      if (user.passwordResetAttempts >= MAX_ATTEMPTS) {
+        user.passwordResetToken = null;
+        user.passwordResetExpires = null;
+        user.passwordResetLockUntil = new Date(Date.now() + 15 * 60 * 1000);
+        await user.save();
+        return res.status(429).json({
+          success: false,
+          message: 'Too many failed attempts. Reset code has been invalidated. Please request a new one.',
+        });
+      }
+      await user.save();
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired reset code',
+      });
+    }
+
+    // Update password and invalidate reset token
     user.password = newPassword;
     user.passwordResetToken = null;
     user.passwordResetExpires = null;
+    user.passwordResetAttempts = 0;
+    user.passwordResetLockUntil = null;
     await user.save();
 
     res.status(200).json({
