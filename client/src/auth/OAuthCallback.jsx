@@ -49,7 +49,7 @@ function OAuthCallback() {
           setStatusMessage(data.message || 'Authentication exchange failed.');
           setTimeout(() => navigate('/auth'), 2000);
         }
-      } catch (err) {
+      } catch {
         setStatusMessage('Network error during authentication exchange.');
         setTimeout(() => navigate('/auth'), 2000);
       }

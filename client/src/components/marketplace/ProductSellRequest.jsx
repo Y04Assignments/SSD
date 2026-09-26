@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import useAuth from '../../context/useAuth';
@@ -21,12 +21,13 @@ function ProductSellRequest() {
     [token]
   );
 
-  const fetchMyProducts = async () => {
+  const fetchMyProducts = useCallback(async () => {
     if (!authConfig) {
       setProducts([]);
       setLoading(false);
       return;
     }
+
     try {
       setLoading(true);
       const { data } = await axios.get('/api/products/mine', authConfig);
@@ -38,11 +39,11 @@ function ProductSellRequest() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [authConfig]);
 
   useEffect(() => {
     fetchMyProducts();
-  }, [token]);
+  }, [fetchMyProducts]);
 
   const handleCreate = async payload => {
     if (!authConfig) return;
