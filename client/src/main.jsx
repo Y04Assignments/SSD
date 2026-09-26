@@ -10,6 +10,7 @@ import axios from 'axios';
 const rawApiUrl = import.meta.env.VITE_API_URL;
 const normalizedBase = rawApiUrl ? rawApiUrl.replace(/\/api\/?$/i, '') : 'http://localhost:5001';
 axios.defaults.baseURL = normalizedBase;
+axios.defaults.withCredentials = true;
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
