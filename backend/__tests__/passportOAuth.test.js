@@ -15,9 +15,7 @@ describe('V05: Google OAuth Security & Role Assignment Tests', () => {
     };
 
     const mockFindOne = jest.spyOn(User, 'findOne').mockResolvedValue(null);
-    let createdUser = null;
     const mockSave = jest.fn(function () {
-      createdUser = this;
       return Promise.resolve(this);
     });
     jest.spyOn(User.prototype, 'save').mockImplementation(mockSave);
