@@ -1,0 +1,43 @@
+VULN-03: PUBLIC DEBUG ENDPOINT EXPOSING VERIFICATION TOKENS - BEFORE STATE EVIDENCE
+====================================================================================
+Type: Historical source code evidence (from project audit documentation and Git history)
+
+=== HISTORICAL VULNERABLE IMPLEMENTATION (BEFORE FIX) ===
+
+From project audit documentation (About.md, lines 175-181):
+  "GET /api/debug/tokens" returns plaintext emailVerificationToken values
+  for any user in the database without authentication.
+  "GET /api/debug/tokens/:email" returns targeted token for a specific email.
+  Both endpoints were mounted at: app.use('/api/debug', debugRoutes)
+
+Described attack path:
+  1. Attacker registers an account
+  2. Queries GET /api/debug/tokens/:email 
+  3. Obtains the plaintext verification token
+  4. Calls /api/users/verify-email/:token directly
+  5. Bypasses email confirmation completely
+  6. Gains verified account access without valid email inbox
+
+Expected vulnerable response (documented in project's About.md, section 9):
+  GET /api/debug/tokens
+  Response: JSON array of all verification tokens and email addresses in the database
+  This gave attackers direct access to bypass email verification for ANY user.
+
+=== API INVENTORY REFERENCE ===
+
+From About.md API Inventory table (lines 118-119):
+  | GET | /api/debug/tokens            | Debug Controller | No | Public | None | None | User.find  | HIGH: Exposes all verification tokens to public |
+  | GET | /api/debug/tokens/:email     | Debug Controller | No | Public | None | req.params.email | User.findOne | HIGH: Targeted token exfiltration |
+
+=== ROUTE MOUNTING (HISTORICAL, BEFORE FIX) ===
+
+In app.js (BEFORE commit 1576a8a):
+  app.use('/api/debug', debugRoutes);   // Publicly mounted - no auth middleware
+
+Note: The /api/debug route WAS mounted in the app but the debug.js routes
+contained token-returning endpoints that are now decommissioned.
+
+=== IMPACT ===
+- Authentication bypass for any registered account
+- Bot account creation at scale without valid email addresses
+- OWASP A01:2021 Broken Access Control / A05:2021 Security Misconfiguration

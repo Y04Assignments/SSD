@@ -1,0 +1,49 @@
+VULN-08: REGULAR EXPRESSION DENIAL OF SERVICE (ReDoS) - BEFORE STATE EVIDENCE
+===============================================================================
+Type: Historical source code evidence (from project audit documentation and Git diff)
+
+=== VULNERABLE CODE (BEFORE commit d107917) ===
+
+From About.md, Section 8, Finding 8 (lines 221-232):
+  "searchStations dynamically creates regular expressions using unescaped user query strings:
+   const searchRegex = new RegExp(search, 'i');"
+
+Vulnerable stationController.js (BEFORE fix):
+  export const searchStations = async (req, res) => {
+    const { search, district } = req.query;
+    
+    if (search && search.trim() !== '') {
+      // VULNERABLE: User input directly compiled into RegExp
+      const searchRegex = new RegExp(search, 'i');  // <-- No escaping!
+      andConditions.push({ $or: [{ name: searchRegex }, { address: searchRegex }] });
+    }
+    
+    if (district && district.trim() !== '') {
+      // VULNERABLE: Same issue in district filter
+      const districtRegex = new RegExp(district, 'i');  // <-- No escaping!
+      andConditions.push({ district: districtRegex });
+    }
+  };
+
+=== ATTACK VECTORS (HISTORICAL) ===
+
+Attack 1 - SyntaxError / 500 Internal Server Error:
+  GET /api/stations/search?search=(test
+  Expected result (BEFORE): JavaScript SyntaxError, unhandled exception, HTTP 500
+  Impact: Any unauthenticated user could trigger 500 errors.
+
+Attack 2 - Catastrophic Backtracking (ReDoS):
+  GET /api/stations/search?search=((a+)+)+$
+  Expected result (BEFORE): Node.js event loop blocked on regex matching
+  Impact: Exponential CPU consumption on single-threaded Node.js,
+          all concurrent requests starved, effective DoS.
+
+Attack 3 - Regex Injection for broader match manipulation:
+  GET /api/stations/search?search=.*
+  Expected result (BEFORE): Returns ALL stations regardless of intended filter
+  Impact: Bypasses intended search scoping.
+
+=== OWASP CATEGORY ===
+A05:2021 - Security Misconfiguration / Denial of Service
+CWE-1333: Inefficient Regular Expression Complexity
+CWE-400: Uncontrolled Resource Consumption

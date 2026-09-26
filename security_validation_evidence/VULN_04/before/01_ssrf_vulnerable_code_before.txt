@@ -1,0 +1,56 @@
+VULN-04: SERVER-SIDE REQUEST FORGERY (SSRF) IN IMAGE RESOLVER - BEFORE STATE EVIDENCE
+======================================================================================
+Type: Historical source code evidence (from project audit documentation)
+
+=== VULNERABLE CODE PATTERN (BEFORE FIX) ===
+
+From About.md, Section 8, Finding 4 (lines 184-191):
+  "resolveProductImageUrl accepts an arbitrary 'url' query parameter. 
+   It checks only isHttpUrl (verifying http: or https:) and directly 
+   executes fetch(sourceUrl) with redirect: 'follow' without checking 
+   IP ranges or prohibiting private subnets."
+
+Vulnerable pattern (BEFORE commit 2015a97):
+  const isHttpUrl = value => {
+    const parsed = new URL(value);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  };
+
+  export const resolveProductImageUrl = async (req, res) => {
+    const sourceUrl = String(req.query?.url || '').trim();
+
+    // ONLY checked if the protocol was http/https - NO IP range blocking!
+    if (!sourceUrl || !isHttpUrl(sourceUrl)) {
+      return res.status(400).json({ ... });
+    }
+
+    // VULNERABLE: Directly fetched ANY URL including internal/private ones
+    const response = await fetch(sourceUrl, { redirect: 'follow' });
+    // ...
+  };
+
+=== DOCUMENTED ATTACK PATHS (HISTORICAL) ===
+
+Attack 1 - Cloud Metadata Exfiltration:
+  GET /api/products/resolve-image?url=http://169.254.169.254/latest/meta-data/
+  Expected result: Server would fetch AWS EC2 metadata and return it in response
+
+Attack 2 - Internal Port Scanning:
+  GET /api/products/resolve-image?url=http://127.0.0.1:5001/api/debug/tokens
+  Expected result: Server would fetch internal debug endpoint
+
+Attack 3 - Internal Network Reconnaissance:
+  GET /api/products/resolve-image?url=http://10.0.0.1/admin
+  Expected result: Server would probe internal network services
+
+=== IMPACT ===
+- Cloud metadata exfiltration (AWS/GCP instance credentials)
+- Internal network reconnaissance
+- Access to internal services not exposed to the internet
+- OWASP A10:2021 Server-Side Request Forgery (CWE-918)
+
+=== NOTE ON SAFE TESTING ===
+The BEFORE state was NOT live-reproduced as this would have required:
+1. Attacking internal network infrastructure, which is prohibited.
+2. Risk of actually reaching cloud metadata endpoints.
+The vulnerability is documented via the project's own security audit.

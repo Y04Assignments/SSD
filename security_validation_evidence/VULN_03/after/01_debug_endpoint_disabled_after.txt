@@ -1,0 +1,53 @@
+VULN-03: PUBLIC DEBUG ENDPOINT EXPOSING VERIFICATION TOKENS - AFTER STATE EVIDENCE
+===================================================================================
+Date: 2026-09-26
+Tester: Security Validation Lead (M03)
+Test Method: Live API test against running backend (http://localhost:5001)
+
+=== CURRENT FIXED SOURCE CODE - debug.js ===
+
+import express from 'express';
+const router = express.Router();
+
+// Debug token endpoints have been permanently decommissioned for security
+router.all('*', (_req, res) => {
+  res.status(404).json({ success: false, message: 'Debug endpoints are disabled' });
+});
+
+export default router;
+
+=== NOTE ON ROUTE MOUNTING ===
+
+Inspection of current app.js shows the /api/debug route is NOT mounted.
+The debug.js file exists but the catch-all handler returns 404 for all requests.
+The route was effectively decommissioned.
+
+=== LIVE API TEST 1 - /api/debug/tokens ===
+
+REQUEST: GET http://localhost:5001/api/debug/tokens
+HTTP STATUS: 404
+RESPONSE BODY: Cannot GET /api/debug/tokens (Express default 404)
+
+SECURITY OUTCOME: PASS
+  - The debug endpoint is completely unreachable.
+  - No verification tokens are exposed.
+  - The endpoint returns HTTP 404 (Not Found).
+
+=== LIVE API TEST 2 - /api/debug/tokens/:email (Targeted attack) ===
+
+REQUEST: GET http://localhost:5001/api/debug/tokens/test@test.com
+HTTP STATUS: 404
+RESPONSE BODY: Cannot GET /api/debug/tokens/test@test.com
+
+SECURITY OUTCOME: PASS
+  - Targeted token exfiltration for specific email is BLOCKED.
+  - HTTP 404 returned - no data leaked.
+
+=== SECURITY FIX COMMIT ===
+SHA: 1576a8a
+Message: "fix(security): remove public verification token debug endpoints"
+Date: Sep 26 2026
+
+=== OWASP CATEGORY ===
+A01:2021 - Broken Access Control REMEDIATED
+A05:2021 - Security Misconfiguration REMEDIATED

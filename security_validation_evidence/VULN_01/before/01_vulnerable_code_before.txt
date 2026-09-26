@@ -1,0 +1,68 @@
+VULN-01: MASS ASSIGNMENT TO ADMIN ROLE - BEFORE STATE EVIDENCE
+==============================================================
+Type: Historical Source Code (extracted from Git commit 32ef852 parent)
+Evidence Method: git show 32ef852 diff showing the vulnerable code that was REMOVED
+
+=== VULNERABLE CODE IN middleware/validation.js (BEFORE FIX) ===
+
+// The registration validator explicitly allowed the 'role' field:
+export const validateRegister = [
+  body('email').isEmail().normalizeEmail().withMessage('Please provide a valid email address'),
+  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
+
+  // *** VULNERABLE LINE - REMOVED BY SECURITY FIX (commit 32ef852) ***
+  body('role').optional().isIn(['user', 'admin']).withMessage('Role must be either user or admin'),
+];
+
+// This allowed 'admin' as a valid user-supplied role during registration.
+
+=== VULNERABLE CODE IN userController.js (BEFORE FIX) ===
+
+// Line 55 (BEFORE): extracted role from request body
+const { email, password, role } = req.body;   // <-- role was extracted from user input
+
+// Lines 63-67 (BEFORE): used user-supplied role directly
+const user = await User.create({
+  email,
+  password,
+  role: role || 'user',   // <-- user-supplied 'admin' was accepted as the role!
+});
+
+=== GIT DIFF EVIDENCE (commit 32ef852) ===
+
+diff --git a/backend/middleware/validation.js b/backend/middleware/validation.js
+index b1afbe5..8f2529f 100644
+--- a/backend/middleware/validation.js
++++ b/backend/middleware/validation.js
+@@ -5,8 +5,6 @@ export const validateRegister = [
+   body('email').isEmail().normalizeEmail().withMessage('Please provide a valid email address'),
+   body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
+-
+-  body('role').optional().isIn(['user', 'admin']).withMessage('Role must be either user or admin'),
+ ];
+
+diff --git a/backend/src/controllers/userController.js b/backend/src/controllers/userController.js
+--- a/backend/src/controllers/userController.js
++++ b/backend/src/controllers/userController.js
+-    const { email, password, role } = req.body;
++    const { email, password } = req.body;
+     ...
+-      role: role || 'user',
++      role: 'user',
+
+=== ATTACK PATH (HISTORICAL) ===
+
+An attacker could register via curl/Postman:
+  curl -X POST http://localhost:5001/api/users/register \
+    -H "Content-Type: application/json" \
+    -d '{"email":"attacker@test.com","password":"Password123!","role":"admin"}'
+
+Expected result (BEFORE FIX): User created with role: "admin"
+This granted instant administrator access.
+
+=== GIT COMMIT METADATA ===
+Commit SHA: 32ef852aac427eb89efddc81db41127de215b32c
+Author: Mona Lisa <127621657+rushela@users.noreply.github.com>
+Date: Sat Sep 26 03:17:30 2026 +0530
+Message: fix(security): prevent role mass assignment during registration
+Files changed: backend/middleware/validation.js, backend/src/controllers/userController.js, backend/src/models/User.js

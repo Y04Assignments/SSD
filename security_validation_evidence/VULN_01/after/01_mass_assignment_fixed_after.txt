@@ -1,0 +1,93 @@
+VULN-01: MASS ASSIGNMENT TO ADMIN ROLE - AFTER STATE EVIDENCE
+==============================================================
+Date: 2026-09-26
+Tester: Security Validation Lead (M03)
+Test Method: Live API test against running backend (http://localhost:5001)
+
+=== FIXED SOURCE CODE - middleware/validation.js ===
+
+// Role field is completely ABSENT from registration validator
+export const validateRegister = [
+  body('email').isEmail().normalizeEmail().withMessage('Please provide a valid email address'),
+  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
+  // *** No 'role' field here - role is NEVER accepted from client ***
+];
+
+=== FIXED SOURCE CODE - userController.js (lines 55-68) ===
+
+// Role is NOT extracted from request body
+const { email, password } = req.body;
+
+// Role is HARDCODED to 'user' - never from client input
+const user = await User.create({
+  email,
+  password,
+  role: 'user',   // <-- Hardcoded, never from req.body
+});
+
+=== LIVE API TEST RESULT ===
+
+REQUEST:
+  POST http://localhost:5001/api/users/register
+  Content-Type: application/json
+  Body: {"email":"testattacker@test.com","password":"Password123!","role":"admin"}
+
+RESPONSE (HTTP 201):
+  {
+    "success": true,
+    "message": "User registered successfully. Please check your email to verify your account.",
+    "data": {
+      "user": {
+        "id": "6ab7efbdc21b3b2c66ad9c79",
+        "email": "testattacker@test.com",
+        "role": "user",         <-- Role is 'user' despite 'admin' being submitted
+        "isEmailVerified": false
+      }
+    }
+  }
+
+SECURITY OUTCOME: PASS
+  - The 'role: "admin"' submitted in the request body was silently ignored.
+  - The user was created with role: "user" (the safe default).
+  - Privilege escalation via mass assignment is PREVENTED.
+
+=== ACCESS CONTROL TEST ===
+
+REQUEST:
+  GET http://localhost:5001/api/users
+  (No Authorization header - simulating unauthenticated/normal user access)
+
+RESPONSE (HTTP 401):
+  {"success":false,"message":"Access denied. No token provided."}
+
+SECURITY OUTCOME: PASS
+  - Admin-only endpoint correctly rejects unauthenticated requests.
+
+=== AUTOMATED TEST EVIDENCE ===
+
+Test file: backend/__tests__/userAuth.test.js
+Test: "V01: Registration successfully forces default 'user' role and ignores 'admin' input"
+
+Test code:
+  test('V01: Registration successfully forces default "user" role and ignores "admin" input', async () => {
+    mockFindOne.mockResolvedValue(null);
+    const req = { body: { email: 'hacker@x.com', password: 'password', role: 'admin' } };
+    const res = mockRes();
+    mockCreate.mockResolvedValue({ _id: 'u2', email: 'hacker@x.com', role: 'user', isEmailVerified: false });
+    
+    await controllers.register(req, res);
+    
+    expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({
+      email: 'hacker@x.com',
+      password: 'password',
+      role: 'user' // MUST be 'user', never 'admin'
+    }));
+    expect(res.status).toHaveBeenCalledWith(201);
+  });
+
+TEST RESULT: PASSED
+
+=== SECURITY FIX COMMIT ===
+SHA: 32ef852aac427eb89efddc81db41127de215b32c
+Author: Mona Lisa
+Date: Sat Sep 26 03:17:30 2026 +0530
