@@ -1,5 +1,6 @@
 import Product from '../models/Product.js';
 import { validateSafeUrl, safeFetch } from '../utils/ssrfValidator.js';
+import { pickAllowedFields } from '../utils/pickAllowedFields.js';
 
 const IMAGE_EXT_PATTERN = /\.(png|jpe?g|gif|webp|avif|svg)(\?.*)?$/i;
 
@@ -267,6 +268,20 @@ export const getProductById = async (req, res) => {
   }
 };
 
+const PRODUCT_EDITABLE_FIELDS = [
+  'name',
+  'shortDescription',
+  'fullDescription',
+  'category',
+  'price',
+  'discount',
+  'stockQuantity',
+  'availabilityStatus',
+  'brand',
+  'technicalSpecifications',
+  'imageUrls',
+];
+
 export const updateProduct = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
@@ -280,13 +295,14 @@ export const updateProduct = async (req, res) => {
       return res.status(403).json({ message: 'Unauthorized' });
     }
 
-    const updates = {
-      ...req.body,
-      name: req.body.name?.trim(),
-      shortDescription: req.body.shortDescription?.trim(),
-      fullDescription: req.body.fullDescription?.trim(),
-      brand: req.body.brand?.trim(),
-    };
+    // Start from the whitelist instead of the raw request body.
+    const updates = pickAllowedFields(req.body, PRODUCT_EDITABLE_FIELDS);
+
+    // Trim string fields exactly as before, but only if the client sent them.
+    if (updates.name !== undefined) updates.name = updates.name?.trim();
+    if (updates.shortDescription !== undefined) updates.shortDescription = updates.shortDescription?.trim();
+    if (updates.fullDescription !== undefined) updates.fullDescription = updates.fullDescription?.trim();
+    if (updates.brand !== undefined) updates.brand = updates.brand?.trim();
 
     if (updates.technicalSpecifications !== undefined) {
       updates.technicalSpecifications = normalizeSpecs(updates.technicalSpecifications);
