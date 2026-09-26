@@ -1,0 +1,106 @@
+VULN-07: UNAUTHENTICATED PII AND PHYSICAL GEOLOCATION EXPOSURE - AFTER STATE
+=============================================================================
+Date: 2026-09-26
+Tester: Security Validation Lead (M03)
+Test Method: Static code analysis + live API testing + automated tests
+
+=== FIXED SOURCE CODE - sellRequestController.js: getActiveSellRequests ===
+
+export const getActiveSellRequests = async (req, res) => {
+  try {
+    // NO .populate('resident') - resident data is NOT fetched at all
+    const rawRequests = await SellRequest.find({ status: 'Pending' })
+      .sort({ createdAt: -1 })
+      .select('energyAmount location comment status createdAt')  // Select ONLY safe fields
+      .lean();
+
+    const requests = rawRequests.map(request => {
+      const coords = request.location?.coordinates;
+      
+      // FUZZ coordinates to 2 decimal places (~1.1km area) 
+      // Prevents exact residential tracking
+      const fuzzedLocation =
+        coords && Array.isArray(coords) && coords.length === 2
+          ? {
+              type: 'Point',
+              coordinates: [
+                Math.round(Number(coords[0]) * 100) / 100,  // 80.123456 -> 80.12
+                Math.round(Number(coords[1]) * 100) / 100,  // 7.654321 -> 7.65
+              ],
+            }
+          : request.location;
+
+      // Generate anonymous username - never expose real name or email
+      const sellerSuffix = request._id ? request._id.toString().slice(-4) : 'Resident';
+
+      return {
+        _id: request._id,
+        username: `Solar Seller #${sellerSuffix}`,  // Anonymous identifier
+        energyAmount: request.energyAmount,
+        location: fuzzedLocation,    // Fuzzed, not exact
+        comment: request.comment,
+        status: request.status,
+        createdAt: request.createdAt,
+        // resident: ABSENT - not included in response
+        // email: ABSENT - not included in response  
+        // name: ABSENT - not included in response
+      };
+    });
+
+    res.status(200).json({ message: 'Active sell requests retrieved successfully', requests });
+  }
+};
+
+=== LIVE API TEST RESULT ===
+
+REQUEST: GET http://localhost:5001/api/sell-request/map
+HTTP STATUS: 200
+RESPONSE EXCERPT:
+  {
+    "message": "Active sell requests retrieved successfully",
+    "requests": [
+      {
+        "_id": "69ee0efb6964b2441ae6ea67",
+        "username": "Solar Seller #ea67",    <-- Anonymous: no real name
+        "energyAmount": 22,
+        "location": {
+          "type": "Point",
+          "coordinates": [80.01, 7.56]       <-- Fuzzed to 2 decimal places
+        },
+        "comment": "",
+        "status": "Pending",
+        "createdAt": "2026-04-26T13:11:23.777Z"
+        // No email field - REMOVED
+        // No resident object - REMOVED
+        // No MongoDB _id of resident - REMOVED
+      }
+    ]
+  }
+
+SECURITY VERIFICATION:
+  ✓ No email addresses in response
+  ✓ No real names in response
+  ✓ No MongoDB resident IDs in response
+  ✓ Coordinates are fuzzed to 2 decimal places (80.01 not 80.123456)
+  ✓ Only anonymous "Solar Seller #XXXX" identifier used
+
+=== AUTOMATED TEST EVIDENCE ===
+
+Test file: backend/__tests__/sellRequestController.test.js
+Test: "V08: getActiveSellRequests omits resident PII and truncates coordinates to 2 decimal places"
+
+Simulated input: coordinates [80.123456, 7.654321], resident: {name: 'Secret User', email: 'secret@secret.com'}
+Expected output: coordinates [80.12, 7.65], username: 'Solar Seller #...'
+
+Assertions verified:
+  ✓ returnedRequest.location.coordinates[0] === 80.12 (not 80.123456)
+  ✓ returnedRequest.location.coordinates[1] === 7.65 (not 7.654321)
+  ✓ returnedRequest.resident === undefined (PII stripped)
+  ✓ returnedRequest.username matches /Solar Seller/
+
+TEST RESULT: PASSED
+
+=== SECURITY FIX COMMIT ===
+SHA: 843b1af
+Message: "fix(security): minimize public sell request location data"
+Files: backend/src/controllers/sellRequestController.js
