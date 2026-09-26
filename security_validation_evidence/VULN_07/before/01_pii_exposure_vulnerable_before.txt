@@ -1,0 +1,55 @@
+VULN-07: UNAUTHENTICATED PII AND PHYSICAL GEOLOCATION EXPOSURE - BEFORE STATE
+==============================================================================
+Type: Historical source code evidence (from project audit documentation)
+
+=== VULNERABLE CODE (BEFORE commit 843b1af) ===
+
+From About.md, Section 8, Finding 7 (lines 213-219):
+  "GET /api/sell-request/map is completely public. Line 19 returns 
+   resident: request.resident, which populates resident with name and email.
+   The exact GPS coordinates of the resident are exposed."
+
+Vulnerable getActiveSellRequests (BEFORE):
+  const requests = await SellRequest.find({ status: 'Pending' })
+    .populate('resident', 'name email')   // <-- PII EXPOSED: name and email
+    .lean();
+  
+  // Response included:
+  {
+    "_id": "...",
+    "resident": {
+      "name": "John Doe",           // Real name
+      "email": "john@example.com"   // Real email - EXPOSED to public!
+    },
+    "location": {
+      "type": "Point",
+      "coordinates": [80.123456789, 7.654321]  // Exact GPS coordinates!
+    },
+    "energyAmount": 22,
+    ...
+  }
+
+=== ATTACK PATH (HISTORICAL) ===
+
+1. Anyone calls: GET /api/sell-request/map (no authentication required)
+2. Response includes: resident.name, resident.email for every active seller
+3. Response includes: exact GPS coordinates of the seller's property
+4. Automated scraper builds database of homeowner names, emails, and home locations
+5. Enables: spam, phishing, stalking, physical location correlation
+
+Additionally:
+  - Review endpoint: GET /api/reviews/station/:stationId
+  - Exposed: reviewer email addresses (documented in About.md line 132)
+
+=== EXPOSED DATA TYPES ===
+
+- Personal email addresses (PII)
+- Real names (PII)
+- Exact GPS coordinates of residential properties (geolocation)
+- MongoDB internal user IDs (internal system data)
+
+=== OWASP CATEGORY ===
+A01:2021 - Broken Access Control
+CWE-200: Exposure of Sensitive Information to an Unauthorized Actor
+CWE-359: Exposure of Private Personal Information to an Unauthorized Actor
+GDPR violation: Article 5 (data minimization), Article 25 (privacy by design)

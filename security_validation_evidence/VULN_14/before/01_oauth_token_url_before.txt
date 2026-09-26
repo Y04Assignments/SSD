@@ -1,0 +1,46 @@
+VULN-14: OAUTH TOKEN AND PII LEAKAGE - BEFORE STATE EVIDENCE
+=============================================================
+Type: Historical source code evidence (from project audit documentation)
+
+=== VULNERABLE CODE (BEFORE commit b06df01) ===
+
+From About.md, Section 11, OAuth/OIDC Analysis (lines 276-281):
+  "Tokens are leaked in the URL query string (/oauth/callback?token=...)."
+  "There is no state parameter verification (CSRF vulnerability)."
+
+Vulnerable OAuth callback pattern (BEFORE):
+  // After Google OAuth authentication (VULNERABLE):
+  const token = jwt.sign(userData, process.env.JWT_SECRET, { expiresIn: '30d' });
+  
+  // CRITICAL VULNERABILITY: Full JWT token in URL query string
+  res.redirect(`${frontendUrl}/oauth/callback?token=${token}`);
+  // The ?token=eyJhbGci... appears in:
+  //  - Browser history
+  //  - Server logs
+  //  - Referer headers to third-party resources
+  //  - Bookmarks if user bookmarks the page
+  //  - Shared URLs if user copies the address bar
+
+Additionally, PII in the redirect URL:
+  // Also exposed user data in URL:
+  res.redirect(`${frontendUrl}/oauth/callback?token=${token}&user=${JSON.stringify(userData)}`);
+  // user.email, user.role, user.id all visible in URL
+
+=== IMPACT (HISTORICAL) ===
+
+1. JWT Token in URL:
+   - Token visible in browser URL bar (visible to anyone behind the user)
+   - Token logged in web server access logs
+   - Token sent in HTTP Referer header to any third-party resources
+   - Token persisted in browser history
+   - Token accessible via JavaScript (window.location)
+
+2. No state parameter validation:
+   - CSRF attack possible: Attacker can initiate OAuth flow
+   - Attacker can link victim's Google account to attacker's session
+
+=== OWASP CATEGORY ===
+A02:2021 - Cryptographic Failures
+A07:2021 - Identification and Authentication Failures
+CWE-200: Information Exposure
+CWE-352: Cross-Site Request Forgery (CSRF)

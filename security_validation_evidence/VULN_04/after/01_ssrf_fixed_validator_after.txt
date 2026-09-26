@@ -1,0 +1,113 @@
+VULN-04: SERVER-SIDE REQUEST FORGERY (SSRF) IN IMAGE RESOLVER - AFTER STATE EVIDENCE
+======================================================================================
+Date: 2026-09-26
+Tester: Security Validation Lead (M03)
+Test Method: Static code analysis + automated unit tests
+
+=== FIXED SOURCE CODE - ssrfValidator.js (Key Functions) ===
+
+// Checks all private/reserved IPv4 ranges
+export const isPrivateOrReservedIPv4 = ip => {
+  const parts = ip.split('.').map(Number);
+  if (parts.length !== 4 || parts.some(p => isNaN(p) || p < 0 || p > 255)) return true; // malformed = unsafe
+  const [a, b] = parts;
+  if (a === 0) return true;          // 0.0.0.0/8
+  if (a === 10) return true;         // RFC 1918 Private
+  if (a === 127) return true;        // Loopback
+  if (a === 169 && b === 254) return true; // Cloud Metadata (AWS/GCP)
+  if (a === 172 && b >= 16 && b <= 31) return true; // RFC 1918 Private
+  if (a === 192 && b === 168) return true; // RFC 1918 Private
+  if (a >= 224 && a <= 239) return true; // Multicast
+  // ... additional ranges
+};
+
+// DNS-resolving validator that checks ALL returned IP addresses
+export const validateSafeUrl = async candidateUrl => {
+  const parsed = new URL(candidateUrl);
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    return { valid: false, error: 'Only HTTP and HTTPS protocols are permitted' };
+  }
+  
+  // Rejects internal hostnames by name
+  if (unbracketedHost === 'localhost' || hostname.endsWith('.local') || ...) {
+    return { valid: false, error: 'Access to internal or local hostnames is prohibited' };
+  }
+  
+  // Rejects private IP addresses directly
+  if (net.isIPv4(unbracketedHost) && isPrivateOrReservedIPv4(unbracketedHost)) {
+    return { valid: false, error: 'Access to private, loopback, or reserved IP addresses is prohibited' };
+  }
+  
+  // DNS resolution check - validates ALL returned addresses
+  const addresses = await dns.lookup(hostname, { all: true });
+  for (const record of addresses) {
+    if (isPrivateOrReservedIPv4(record.address)) {
+      return { valid: false, error: 'Host resolves to a private or reserved IP address' };
+    }
+  }
+};
+
+// Safe fetch - validates EVERY redirect hop
+export const safeFetch = async (targetUrl, options = {}, maxRedirects = 3) => {
+  while (redirects <= maxRedirects) {
+    const validation = await validateSafeUrl(currentUrl);
+    if (!validation.valid) {
+      const error = new Error(`SSRF validation blocked: ${validation.error}`);
+      error.isSsrfBlocked = true;
+      throw error;   // Blocks the request
+    }
+    // ... process safe request
+  }
+};
+
+=== LIVE SECURITY TEST - SSRF PROTECTION ON UNAUTHENTICATED REQUEST ===
+
+REQUEST: GET http://localhost:5001/api/products/resolve-image?url=http://127.0.0.1:5001/api/users
+HTTP STATUS: 401
+RESPONSE: {"success":false,"message":"Access denied. No token provided."}
+
+NOTE: The endpoint requires authentication (admin), providing an additional 
+defense layer before SSRF validation even runs.
+
+=== STATIC SSRF TEST RESULTS (from ssrfValidator.js logic) ===
+
+URL: http://127.0.0.1:5001/           -> BLOCKED (loopback IPv4)
+URL: http://169.254.169.254/          -> BLOCKED (cloud metadata link-local)
+URL: http://10.0.0.1/                 -> BLOCKED (RFC1918 private)
+URL: http://192.168.1.1/              -> BLOCKED (RFC1918 private)
+URL: http://localhost:8080/           -> BLOCKED (localhost hostname)
+URL: http://myserver.local/           -> BLOCKED (.local hostname)
+URL: http://[::1]/                    -> BLOCKED (IPv6 loopback)
+URL: http://[::ffff:127.0.0.1]/      -> BLOCKED (IPv4-mapped IPv6 loopback)
+URL: file:///etc/passwd               -> BLOCKED (non-http protocol)
+URL: https://example.com/image.png   -> ALLOWED (legitimate public URL)
+
+=== AUTOMATED TEST RESULTS ===
+
+Test file: backend/__tests__/ssrfValidator.test.js
+Tests:
+  ✓ should detect loopback addresses (127.0.0.1, 127.255.255.255)
+  ✓ should detect RFC 1918 private addresses (10.x, 172.16-31.x, 192.168.x.x)
+  ✓ should detect link-local cloud metadata addresses (169.254.169.254)
+  ✓ should detect CGNAT and multicast addresses
+  ✓ should allow legitimate public IPv4 addresses
+  ✓ should detect IPv6 loopback and unspecified
+  ✓ should detect IPv4-mapped IPv6 loopback and private
+  ✓ should detect link-local and unique-local IPv6 addresses
+  ✓ should reject non-HTTP/HTTPS protocols
+  ✓ should reject localhost and internal hostnames
+  ✓ should reject direct loopback IP URLs
+  ✓ should reject IPv4-mapped IPv6 loopback URLs
+  ✓ should allow legitimate public URLs
+
+ALL SSRF TESTS: PASSED
+
+=== SECURITY FIX COMMIT ===
+SHA: 2015a97
+Message: "fix(security): prevent SSRF in product image resolver"
+Files: backend/src/utils/ssrfValidator.js (new), backend/src/controllers/productController.js
+
+=== SAFE TESTING LIMITATION NOTE ===
+Live SSRF attack payloads (e.g., 169.254.169.254) were NOT sent as HTTP requests 
+to avoid accidentally interacting with cloud metadata services.
+The validator logic is verified through unit tests which confirm blocking behavior.

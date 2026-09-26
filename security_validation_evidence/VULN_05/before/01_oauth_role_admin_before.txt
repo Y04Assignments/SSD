@@ -1,0 +1,62 @@
+VULN-05: INSECURE DEFAULT ROLE AND FLAWED ACCOUNT LINKING IN OAUTH - BEFORE STATE
+===================================================================================
+Type: Historical source code evidence (from project audit and Git history)
+
+=== VULNERABLE CODE (BEFORE commit d0c7764) ===
+
+From About.md, Section 8, Finding 5 (lines 193-199):
+  "passport.js explicitly sets role: 'admin' for any user registering with Google OAuth.
+   Furthermore, the Mongoose User schema sets default: 'admin'.
+   Pre-existing local accounts matching the Google email address are automatically bound
+   without password verification or local owner consent."
+
+Vulnerable passport.js pattern (BEFORE fix):
+  user = new User({
+    name: profile.displayName || email.split('@')[0],
+    email: email,
+    googleId: profile.id,
+    isEmailVerified: true,
+    role: 'admin',   // <-- CRITICAL: Every Google OAuth user became admin!
+  });
+
+Vulnerable User.js schema (BEFORE fix):
+  role: {
+    type: String,
+    enum: ['user', 'admin'],
+    default: 'admin',   // <-- CRITICAL: Model-level default was also 'admin'!
+  },
+
+Vulnerable account linking (BEFORE fix):
+  // No email verification check before linking Google to local account
+  user = await User.findOne({ email });
+  if (user) {
+    user.googleId = profile.id;   // Linked regardless of verification status
+    await user.save();
+    return done(null, user);
+  }
+
+=== ATTACK PATH (HISTORICAL) ===
+
+1. Any attacker with a Google account could sign in via Google OAuth.
+2. The system would automatically provision them as an administrator.
+3. The admin role granted access to:
+   - DELETE any charging station
+   - PROMOTE any other account to admin
+   - VIEW all users' data
+   - MANAGE all sell requests and products
+
+Additionally:
+4. An attacker could register a local account with a target user's email.
+5. Then sign in with Google OAuth using the same email.
+6. The account would be linked without verifying the local account.
+7. This constituted a pre-account takeover attack.
+
+=== LIVE OAUTH TESTING LIMITATION ===
+Live Google OAuth testing was NOT performed because:
+  - No valid Google OAuth client credentials are available in the test environment.
+  - Creating fake Google credentials would violate safety rules.
+  - The fix is verified through automated unit tests (passportOAuth.test.js).
+
+=== OWASP CATEGORY ===
+A01:2021 - Broken Access Control
+Insecure Design (CWE-276, CWE-287)
