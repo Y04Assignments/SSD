@@ -158,4 +158,66 @@ describe('User Auth Controller', () => {
 
     expect(res.status).toHaveBeenCalledWith(400);
   });
+
+  test('V01: Registration successfully forces default "user" role and ignores "admin" input', async () => {
+    mockFindOne.mockResolvedValue(null);
+    const req = { body: { email: 'hacker@x.com', password: 'password', role: 'admin' } };
+    const res = mockRes();
+
+    mockCreate.mockResolvedValue({ _id: 'u2', email: 'hacker@x.com', role: 'user', isEmailVerified: false });
+
+    await controllers.register(req, res);
+
+    expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({
+      email: 'hacker@x.com',
+      password: 'password',
+      role: 'user' // The critical security property: MUST be user, not admin
+    }));
+    expect(res.status).toHaveBeenCalledWith(201);
+  });
+
+  test('V04: Password reset rejects invalid codes and locks account after exactly 5 attempts', async () => {
+    // A mock user representing an active password reset flow
+    const testUser = {
+      _id: 'u-brute',
+      email: 'target@example.com',
+      passwordResetToken: 'dummy_hash_for_test', // Invalid hash mismatch
+      passwordResetExpires: new Date(Date.now() + 1000 * 60 * 10), // valid expiry
+      passwordResetAttempts: 0,
+      passwordResetLockUntil: null,
+      save: jest.fn().mockImplementation(function() { return Promise.resolve(this); })
+    };
+
+    mockFindOne.mockResolvedValue(testUser);
+    
+    // Perform 4 invalid attempts
+    for (let i = 1; i <= 4; i++) {
+      const req = { body: { email: 'target@example.com', resetCode: '000000', newPassword: 'newpass' } };
+      const res = mockRes();
+      await controllers.resetPassword(req, res);
+      
+      expect(res.status).toHaveBeenCalledWith(400); // Bad Request (invalid code)
+      expect(testUser.passwordResetAttempts).toBe(i);
+      expect(testUser.passwordResetLockUntil).toBeNull();
+    }
+
+    // Perform the 5th invalid attempt (The threshold)
+    const req5 = { body: { email: 'target@example.com', resetCode: '000000', newPassword: 'newpass' } };
+    const res5 = mockRes();
+    await controllers.resetPassword(req5, res5);
+    
+    // Attempt 5 should lock the account and return 429 Too Many Requests
+    expect(res5.status).toHaveBeenCalledWith(429);
+    expect(res5.json).toHaveBeenCalledWith(expect.objectContaining({
+      message: expect.stringMatching(/Too many failed attempts/i)
+    }));
+    expect(testUser.passwordResetLockUntil).not.toBeNull();
+    expect(testUser.passwordResetToken).toBeNull(); // Token invalidated
+
+    // Perform a 6th attempt to verify it stays locked
+    const req6 = { body: { email: 'target@example.com', resetCode: '000000', newPassword: 'newpass' } };
+    const res6 = mockRes();
+    await controllers.resetPassword(req6, res6);
+    expect(res6.status).toHaveBeenCalledWith(429); // Remains 429
+  });
 });
