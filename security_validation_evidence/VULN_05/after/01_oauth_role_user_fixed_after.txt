@@ -1,0 +1,86 @@
+VULN-05: INSECURE DEFAULT ROLE AND FLAWED ACCOUNT LINKING IN OAUTH - AFTER STATE
+==================================================================================
+Date: 2026-09-26
+Tester: Security Validation Lead (M03)
+Test Method: Static code analysis + automated unit tests
+
+=== FIXED SOURCE CODE - config/passport.js ===
+
+// 3. Create new user with least privilege (MUST be 'user', NEVER 'admin')
+user = new User({
+  name: profile.displayName || email.split('@')[0],
+  email: email,
+  googleId: profile.id,
+  isEmailVerified: true, // Google accounts provide verified email
+  role: 'user', // Least privilege: MUST NEVER default to admin
+});
+
+// Account linking requires email verification (prevents pre-account takeover):
+user = await User.findOne({ email });
+if (user) {
+  // Require existing local accounts to be email-verified before linking
+  if (!user.isEmailVerified) {
+    return done(
+      new Error('Account email is not verified. Please verify your local account first.'),
+      null
+    );
+  }
+  // Only links if verified
+  if (!user.googleId) {
+    user.googleId = profile.id;
+    await user.save();
+  }
+  return done(null, user);
+}
+
+=== FIXED SOURCE CODE - src/models/User.js ===
+
+role: {
+  type: String,
+  enum: ['user', 'admin'],
+  default: 'user',   // <-- Fixed: Default is now 'user', not 'admin'
+},
+
+=== AUTOMATED TEST RESULTS ===
+
+Test file: backend/__tests__/passportOAuth.test.js
+
+Test: "MUST assign role 'user' and NEVER 'admin' to new Google OAuth users"
+  - Verifies that handleGoogleAuth creates new users with role: 'user'
+  - Verifies role is NOT 'admin'
+  - Result: PASSED
+
+Test: "MUST reject blind linking to an existing unverified local account"
+  - Verifies that unverified accounts cannot be linked (pre-account takeover prevention)
+  - Verifies done() is called with an error containing 'not verified'
+  - Result: PASSED
+
+Test: "allows linking to an existing verified account without granting admin escalation"
+  - Verifies verified accounts CAN be linked
+  - Verifies the user role remains 'user' after linking
+  - Result: PASSED
+
+ALL OAUTH SECURITY TESTS: PASSED (3/3)
+
+=== OAUTH TOKEN PROTECTION (RELATED TO VULN-14) ===
+
+Fixed auth.js - Token is NEVER in URL:
+  // Secure redirect: NEVER contains token or user JSON in URL
+  const authCode = crypto.randomBytes(32).toString('hex');   // One-time code
+  oauthAuthCodes.set(authCode, { token, user: userData, expiresAt: Date.now() + 60000 });
+  
+  // HttpOnly cookie for session security
+  res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', ... });
+  
+  // URL only contains one-time authorization code - NOT the JWT token
+  res.redirect(`${frontendUrl}/oauth/callback?code=${authCode}`);
+
+=== SECURITY FIX COMMITS ===
+SHA: d0c7764 - "fix(security): prevent admin assignment during OAuth registration"
+  Changed: passport.js role set to 'user', email verification required for linking
+  Changed: User.js model default changed from 'admin' to 'user'
+
+=== LIVE OAUTH TESTING LIMITATION ===
+Live Google OAuth flow testing was NOT performed because:
+  - No valid Google OAuth client credentials are available in the test environment.
+  - Tests confirm the fix through unit testing of handleGoogleAuth function directly.
