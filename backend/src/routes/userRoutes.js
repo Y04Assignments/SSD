@@ -8,6 +8,8 @@ import {
   resendVerificationEmail,
   forgotPassword,
   resetPassword,
+  getSessionFromCookie,
+  logoutUser,
 } from '../controllers/userController.js';
 import { protect, authorize } from '../../middleware/auth.js';
 import { validateRegister, validateLogin } from '../../middleware/validation.js';
@@ -24,6 +26,16 @@ router.post('/register', validateRegister, register);
 // @desc    Login user
 // @access  Public
 router.post('/login', validateLogin, login);
+
+// @route   GET /api/users/session
+// @desc    Restore session from the httpOnly cookie on page load
+// @access  Public
+router.get('/session', getSessionFromCookie);
+
+// @route   POST /api/users/logout
+// @desc    Clear the httpOnly auth cookie
+// @access  Public
+router.post('/logout', logoutUser);
 
 // @route   GET /api/users/verify-email/:token
 // @desc    Verify email address
