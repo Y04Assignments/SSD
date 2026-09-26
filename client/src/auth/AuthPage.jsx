@@ -3,7 +3,10 @@ import { useNavigate, Link } from 'react-router-dom';
 import useAuth from '../context/useAuth';
 import './AuthPage.css';
 
-const socialProviders = [{ id: 'google', label: 'Continue with Google', text: 'G' }];
+const socialProviders = [
+  { id: 'google', label: 'Continue with Google', icon: 'images/google_logo.svg', text: 'G' }, 
+  { id: 'facebook', label: 'Continue with Facebook', icon: 'images/facebook_logo.svg', text: 'f' }
+];
 
 const validators = {
   name: value => (value.trim().length >= 2 ? '' : 'Please enter your full name.'),
@@ -61,15 +64,15 @@ function AuthPage() {
         type="button"
         className="social-btn"
         aria-label={provider.label}
-        onClick={() => handleGoogleLogin()}
+        onClick={() => handleSocialLogin(provider.id)}
       >
-        <span>{provider.text}</span>
+        <img src={provider.icon} alt={`${provider.text}`} className="social-icon" />
       </button>
     ));
 
-  const handleGoogleLogin = () => {
+  const handleSocialLogin = (providerId) => {
     const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
-    window.location.href = `${API_BASE.replace(/\/$/, '')}/auth/google`;
+    window.location.href = `${API_BASE.replace(/\/$/, '')}/auth/${providerId}`;
   };
 
   const handleToggle = active => () => {

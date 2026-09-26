@@ -19,10 +19,14 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    facebookId: {
+      type: String,
+      default: null,
+    },
     password: {
       type: String,
       required: function () {
-        return !this.googleId; // Password required only if not Google user
+        return !this.googleId && !this.facebookId; // Password required only if not Google or Facebook user
       },
       minlength: [6, 'Password must be at least 6 characters long'],
     },

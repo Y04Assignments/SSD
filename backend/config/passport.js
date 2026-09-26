@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
+import { Strategy as FacebookStrategy } from 'passport-facebook';
 import User from '../src/models/User.js';
 
 // Load environment variables
@@ -8,6 +9,9 @@ dotenv.config();
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+
+const FACEBOOK_CLIENT_ID = process.env.FACEBOOK_CLIENT_ID;
+const FACEBOOK_CLIENT_SECRET = process.env.FACEBOOK_CLIENT_SECRET;
 
 /**
  * Verifies and handles Google OAuth authentication profile.
@@ -63,6 +67,83 @@ export const handleGoogleAuth = async (accessToken, refreshToken, profile, done)
     return done(error, null);
   }
 };
+
+/**
+ * Verifies and handles Facebook OAuth authentication profile.
+ * Enforces role: 'user' (least privilege) and verified account linking.
+ */
+export const handleFacebookAuth = async (accessToken, refreshToken, profile, done) => {
+  try {
+    if (!profile || !profile.id) {
+      return done(new Error('Invalid Facebook profile data'), null);
+    }
+
+    // 1. Check if user is already linked with this facebookId
+    let user = await User.findOne({ facebookId: profile.id });
+
+    if (user) {
+      return done(null, user);
+    }
+
+    const email = profile.emails?.[0]?.value?.toLowerCase();
+
+    if (!email) {
+      return done(new Error('No email found in Facebook profile'), null);
+    }
+
+    // 2. Check if user exists by email
+    user = await User.findOne({ email });
+
+    if (user) {
+      // Require existing local accounts to be email-verified before linking
+      if (!user.isEmailVerified) {
+        return done(
+          new Error('Account email is not verified. Please verify your local account first.'),
+          null
+        );
+      }
+
+      if (!user.facebookId) {
+        user.facebookId = profile.id;
+        await user.save();
+      }
+
+      return done(null, user);
+    }
+
+    // 3. Create new user with least privilege
+    user = new User({
+      name: profile.displayName || email.split('@')[0],
+      email: email,
+      facebookId: profile.id,
+      isEmailVerified: true,
+      role: 'user',
+    });
+
+    await user.save();
+
+    return done(null, user);
+  } catch (error) {
+    return done(error, null);
+  }
+};
+
+if (FACEBOOK_CLIENT_ID && FACEBOOK_CLIENT_SECRET) {
+  passport.use(
+    new FacebookStrategy(
+      {
+        clientID: FACEBOOK_CLIENT_ID,
+        clientSecret: FACEBOOK_CLIENT_SECRET,
+        callbackURL:
+          process.env.FACEBOOK_CALLBACK_URL ||
+          'http://localhost:5001/api/auth/facebook/callback',
+        profileFields: ['id', 'displayName', 'email'],
+        state: true,
+      },
+      handleFacebookAuth
+    )
+  );
+}
 
 // Only initialize GoogleStrategy if credentials are set (prevents failures during tests)
 if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET) {

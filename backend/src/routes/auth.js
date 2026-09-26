@@ -14,6 +14,72 @@ router.get(
   passport.authenticate('google', /** @type {any} */ ({ scope: ['profile', 'email'] }))
 );
 
+// Facebook OAuth initiate
+router.get(
+  '/facebook',
+  passport.authenticate('facebook', {
+    scope: ['email'],
+  })
+);
+
+// Facebook OAuth callback
+router.get(
+  '/facebook/callback',
+  passport.authenticate('facebook', {
+    failureRedirect: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth?error=auth_failed`,
+  }),
+  async (req, res) => {
+    try {
+      /** @type {any} */
+      const user = req.user;
+
+      if (!user) {
+        throw new Error('Facebook authentication did not return a user');
+      }
+
+      // Generate the same short-lived authorization code
+      // used by the existing OAuth flow.
+      const authCode = crypto.randomBytes(32).toString('hex');
+
+      const userData = {
+        id: user._id.toString(),
+        email: user.email,
+        name: user.name,
+        role: user.role,
+      };
+      // @ts-ignore
+      const token = jwt.sign(userData, process.env.JWT_SECRET, {
+        expiresIn: process.env.JWT_EXPIRE || '30d',
+      });
+
+      oauthAuthCodes.set(authCode, {
+        token,
+        user: userData,
+        expiresAt: Date.now() + 60000,
+      });
+
+      res.cookie('token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 30 * 24 * 60 * 60 * 1000,
+      });
+
+      const frontendUrl =
+        process.env.FRONTEND_URL || 'http://localhost:3000';
+
+      res.redirect(`${frontendUrl}/oauth/callback?code=${authCode}`);
+    } catch (error) {
+      console.error('Facebook OAuth callback error:', error);
+
+      const frontendUrl =
+        process.env.FRONTEND_URL || 'http://localhost:3000';
+
+      res.redirect(`${frontendUrl}/auth?error=auth_failed`);
+    }
+  }
+);
+
 // Google OAuth callback
 router.get(
   '/google/callback',
