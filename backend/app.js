@@ -6,6 +6,8 @@ import connectDB from './config/db.js';
 import session from 'express-session';
 import passport from './config/passport.js';
 import cookieParser from 'cookie-parser';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 
 import chargingStationRoutes from './src/routes/chargingStationRoutes.js';
 import reviewRoutes from './src/routes/reviewRoutes.js';
@@ -23,6 +25,14 @@ setServers(['1.1.1.1', '8.8.8.8']);
 dotenv.config();
 
 const app = express();
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, 
+  max: 300,  
+  standardHeaders: true,    
+  legacyHeaders: false,     
+  message: { success: false, message: 'Too many requests, please try again later.' },
+});
 
 // Connect to MongoDB (uses process.env.MONGODB_URI)
 connectDB();
@@ -50,6 +60,23 @@ app.use(
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser()); //Parses the cookie header on incoming requests into req.cookies object, so backend can read the httpOnly "token" cookie set at login
+
+// Helmet sets a broad set of security headers with one call.
+// The contentSecurityPolicy block below explicitly adds `frame-ancestors` and `form-action`, the two directives obtained
+// from the ZAP scan flagged as missing a safe fallback 
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+        'frame-ancestors': ["'self'"], // only your own site may frame these pages (anti-clickjacking)
+        'form-action': ["'self'"],     // forms on this site may only submit back to this site
+      },
+    },
+  })
+);
+
+app.use('/api/', apiLimiter); // Apply rate limiting to all API routes
 
 const sessionSecret = process.env.SESSION_SECRET || process.env.JWT_SECRET;
 if (!sessionSecret && process.env.NODE_ENV === 'production') {
