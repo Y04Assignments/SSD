@@ -29,7 +29,7 @@ const generateToken = id => {
   }
   // @ts-ignore
   return jwt.sign({ id }, secret, {
-    expiresIn: process.env.JWT_EXPIRE || '30d',
+    expiresIn: process.env.JWT_EXPIRE || '1d',
   });
 };
 
@@ -190,10 +190,10 @@ export const login = async (req, res) => {
 
     // Set JWT as an httpOnly cookie so client side can never read it (protects against XSS attacks). The cookie is sent automatically with every request to the backend, so the backend can verify the user is logged in.
     res.cookie('token', token, {
-      httpOnly: true, // JavaScript's `document.cookie` cannot see this cookie at all
+      httpOnly: true, 
       secure: process.env.NODE_ENV === 'production', // only sent over HTTPS in production
       sameSite: 'lax', // sent on normal navigation, blocked on most cross-site requests (CSRF hardening)
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days, matching the JWT's own expiry
+      maxAge: 24 * 60 * 60 * 1000, // 1 day, matching the JWT's own expiry
     });
 
     return success(res, {
