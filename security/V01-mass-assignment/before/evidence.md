@@ -3,7 +3,7 @@
 **Vulnerability:** Mass Assignment leading to Privilege Escalation (Admin Account Creation)  
 **OWASP Category:** A01:2021 – Broken Access Control  
 **Affected Component:** `POST /api/users/register`  
-**Preconditions:** None (publicly accessible registration endpoint)  
+**Preconditions:** None (publicly accessible registration endpoint)
 
 ---
 
@@ -13,7 +13,7 @@
 2. The attacker includes `"role": "admin"` inside the JSON payload.
 3. The Express validation middleware (`validateRegister` in `backend/middleware/validation.js`) explicitly permits `"role"` to be `"admin"`:
    ```javascript
-   body('role').optional().isIn(['user', 'admin']).withMessage('Role must be either user or admin')
+   body('role').optional().isIn(['user', 'admin']).withMessage('Role must be either user or admin');
    ```
 4. The controller (`register` in `backend/src/controllers/userController.js`) extracts `role` from `req.body` and assigns it to the new user:
    ```javascript
@@ -122,8 +122,8 @@ Content-Type: application/json; charset=utf-8
 
 ## Observed Result vs Expected Secure Result
 
-* **Observed Result:** Unauthenticated registration payload successfully set `role: "admin"`, and the resulting account successfully accessed privileged admin-only routes.
-* **Expected Secure Result:** Public registration must never accept or bind client-supplied `role` attributes; all standard accounts must be strictly assigned `role: "user"`; Mongoose schema default must be `'user'`.
+- **Observed Result:** Unauthenticated registration payload successfully set `role: "admin"`, and the resulting account successfully accessed privileged admin-only routes.
+- **Expected Secure Result:** Public registration must never accept or bind client-supplied `role` attributes; all standard accounts must be strictly assigned `role: "user"`; Mongoose schema default must be `'user'`.
 
 **Impact:** Complete administrative compromise of the platform by any public registrant.  
 **Source Location:** `backend/middleware/validation.js:9`, `backend/src/controllers/userController.js:51-64`, `backend/src/models/User.js:32`.  

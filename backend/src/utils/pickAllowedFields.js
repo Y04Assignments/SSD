@@ -13,7 +13,7 @@
  * @returns {Record<string, any>} a new object with only the allowed keys copied over
  */
 export const pickAllowedFields = (source, allowedFields) => {
-    /** @type {Record<string, any>} */
+  /** @type {Record<string, any>} */
   const result = {};
   if (!source || typeof source !== 'object') return result;
 

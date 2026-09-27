@@ -121,7 +121,11 @@ function ProductSellRequest() {
       <div className="product-sell__list">
         <div className="product-sell__list-header">
           <h3>Your Listings</h3>
-          <button type="button" className="user-button user-button--ghost" onClick={fetchMyProducts}>
+          <button
+            type="button"
+            className="user-button user-button--ghost"
+            onClick={fetchMyProducts}
+          >
             Refresh
           </button>
         </div>

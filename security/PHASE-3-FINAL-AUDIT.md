@@ -3,7 +3,7 @@
 **Project:** SolarCharge-Finder  
 **Role:** Lead Security Auditor / MEMBER 02 Reviewer  
 **Branch:** `member-02---White-Box-Security-&-Code-Fix-Lead`  
-**Date:** September 26, 2026  
+**Date:** September 26, 2026
 
 ---
 
@@ -11,9 +11,10 @@
 
 ### **PASS WITH FINDINGS**
 
-All nine (9) target vulnerabilities (V01, V02, V03, V04, V05, V06, V07, V08, V14) have been systematically addressed and remediated in the codebase with defensive implementations. All 14 automated Jest test suites (comprising 78 tests) pass without failure or regression. 
+All nine (9) target vulnerabilities (V01, V02, V03, V04, V05, V06, V07, V08, V14) have been systematically addressed and remediated in the codebase with defensive implementations. All 14 automated Jest test suites (comprising 78 tests) pass without failure or regression.
 
 The audit verdict is **PASS WITH FINDINGS** due to three technical observations and procedural constraints:
+
 1. **SSRF TOCTOU / DNS Rebinding Window (V04):** While `ssrfValidator.js` rigorously inspects all IPv4/IPv6 private and reserved ranges as well as DNS resolutions prior to fetching, the underlying HTTP client uses standard `fetch()` which performs its own subsequent DNS resolution. A host utilizing a zero-TTL DNS record could theoretically execute a DNS rebinding attack between validation and connection.
 2. **Read-Modify-Write Concurrency on Password Reset Counter (V06):** Password reset attempt counting in `userController.js` relies on Mongoose `findOne()` followed by `user.save()`, which creates a theoretical race window under high-volume parallel requests before lockout takes effect.
 3. **Commit Hash Discrepancies in Intermediate Evidence Documents:** Individual `after/evidence.md` files created during intermediate iterations reference local pre-rebase commit hashes for several items, whereas the canonical sequential Git history contains the final commit SHAs (`32ef852`, `1576a8a`, `2015a97`, `f70aea2`, `843b1af`, `d107917`, `8feb865`, `d0c7764`, `b06df01`), which are correctly documented in `PHASE-3-REMEDIATION-REPORT.md`.
@@ -23,6 +24,7 @@ The audit verdict is **PASS WITH FINDINGS** due to three technical observations 
 ## Finding-by-Finding Review
 
 ### V01 — Registration Mass Assignment → Admin Escalation
+
 - **Remediation Quality:** **EXCELLENT**. The `role` property was stripped from express-validator schema (`backend/middleware/validation.js`), discarded during request destructuring in `backend/src/controllers/userController.js`, hardcoded as `role: 'user'` during `User.create()`, and the Mongoose schema default was explicitly set to `'user'` in `backend/src/models/User.js`.
 - **Evidence Quality:** **HIGH**. The evidence explicitly documents:
   1. Registration request submitting `"role": "admin"`.
@@ -35,16 +37,18 @@ The audit verdict is **PASS WITH FINDINGS** due to three technical observations 
 ---
 
 ### V02 — Hardcoded Third-Party Credentials & Insecure Fallbacks
+
 - **Remediation Quality:** **STRONG**. Cleartext Gmail address and application password were eradicated from `backend/src/utils/emailService.js`. Email sending is now exclusively bound to `process.env.EMAIL_USER` and `process.env.EMAIL_PASS` with graceful skipping in development/test. All occurrences of `'fallback_secret'` were eradicated. Production startup in `server.js` and `app.js` fails fast with `process.exit(1)` if `JWT_SECRET` or `SESSION_SECRET` are unset.
 - **Evidence Quality:** **HIGH**. Validated via repository-wide `git grep` proving zero cleartext credential matches, alongside proof of application refusal to start under `NODE_ENV=production` without secrets.
 - **Verification Status:** **Static & Environment Configuration Verified (PASSED)**. Real SMTP authentication was deliberately omitted per assignment safety directives to avoid unauthorized third-party account interactions.
-- **Remaining Concerns:** 
+- **Remaining Concerns:**
   - The exposed Google App Password remains visible in historical Git commits (e.g. `2e85bd2`). **The credential owner must immediately revoke the App Password via Google Account Security settings.**
   - Non-production session secrets now dynamically generate ephemeral high-entropy bytes (`crypto.randomBytes(32).toString('hex')`) when not set in the environment, ensuring zero hardcoded fallback strings in source code.
 
 ---
 
 ### V03 — Public Debug Token Exposure
+
 - **Remediation Quality:** **EXCELLENT**. Debug routes were unmounted completely from `backend/app.js`. The handlers in `backend/src/routes/debug.js` were replaced with generic 404 responses.
 - **Evidence Quality:** **HIGH**. Runtime testing confirms both `/api/debug/tokens` and `/api/debug/tokens/:email` return HTTP 404. Legitimate email verification flow remains functional.
 - **Verification Status:** **Runtime Verified (PASSED)**.
@@ -53,6 +57,7 @@ The audit verdict is **PASS WITH FINDINGS** due to three technical observations 
 ---
 
 ### V04 — Server-Side Request Forgery (SSRF) in Product Image Resolver
+
 - **Remediation Quality:** **STRONG**. Implemented [ssrfValidator.js](file:///Users/gavidurushela/ssd%20ass/solar/SSD/backend/src/utils/ssrfValidator.js) featuring:
   - Protocol whitelist: strictly `http:` and `https:`.
   - Blocklist for loopback (`127.0.0.0/8`, `::1`), RFC1918 private ranges (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`), link-local / cloud metadata (`169.254.0.0/16`, `fe80::/10`), CGNAT (`100.64.0.0/10`), ULA IPv6 (`fc00::/7`), and IPv4-mapped IPv6 (`::ffff:...`).
@@ -60,12 +65,13 @@ The audit verdict is **PASS WITH FINDINGS** due to three technical observations 
   - Custom `safeFetch` enforcing a maximum of 3 validated redirects (`redirect: 'manual'`) where each intermediate destination is re-validated before issuing subsequent requests.
 - **Evidence Quality:** **HIGH**. Runtime probe against controlled local listener `127.0.0.1:8888/internal-probe` returned HTTP 400 Bad Request (`"Prohibited or unsafe URL"`). Controlled listener received zero network traffic. 18 automated unit tests in `__tests__/ssrfValidator.test.js` pass cleanly.
 - **Verification Status:** **Runtime & Unit Test Verified (PASSED)**.
-- **Remaining Concerns:** 
+- **Remaining Concerns:**
   - **DNS Rebinding Window:** Because `fetch()` in Node.js handles connection establishment internally and re-resolves DNS rather than pinning the socket to the IP validated in `dns.lookup()`, a theoretical DNS rebinding window exists against domains with TTL=0. Complete mitigation would require overriding `undici`'s `Agent` dispatcher or using a custom net socket agent with pinned IP connectivity. For this assignment scope, the current validation provides substantial protection against typical SSRF vectors.
 
 ---
 
 ### V05 — Insecure Google OAuth Role Assignment & Account Linking
+
 - **Remediation Quality:** **STRONG**. In `backend/config/passport.js`, `handleGoogleAuth`:
   - Explicitly assigns `role: 'user'` for all newly created Google OAuth profiles.
   - Prevents pre-account takeover by checking `if (!user.isEmailVerified)` on existing local accounts with matching emails; if unverified, the OAuth linking request is aborted with an error rather than blindly linking.
@@ -77,6 +83,7 @@ The audit verdict is **PASS WITH FINDINGS** due to three technical observations 
 ---
 
 ### V06 — Weak Password Reset Mechanism
+
 - **Remediation Quality:** **STRONG**.
   - Replaced insecure `Math.random()` with `crypto.randomInt(100000, 1000000)`.
   - Generates SHA-256 hash before storing in MongoDB (`user.passwordResetToken`).
@@ -96,6 +103,7 @@ The audit verdict is **PASS WITH FINDINGS** due to three technical observations 
 ---
 
 ### V07 — Public PII + Exact Residential Geolocation Exposure
+
 - **Remediation Quality:** **EXCELLENT**.
   - In `backend/src/controllers/sellRequestController.js` (`getActiveSellRequests`), completely removed `.populate('resident')`.
   - Data projection strictly limits output fields (`energyAmount location comment status createdAt`).
@@ -108,6 +116,7 @@ The audit verdict is **PASS WITH FINDINGS** due to three technical observations 
 ---
 
 ### V08 — Regex Injection / Query Disruption in Station Search
+
 - **Remediation Quality:** **EXCELLENT**. Added `escapeRegex(str)` utility in `backend/src/controllers/stationController.js` escaping all metacharacters (`.*+?^${}()|[\]\\`). Applied to `search` and `district` query parameters across `searchStations`, `distanceSearchStations`, and `nearbyStations`.
 - **Evidence Quality:** **HIGH**. Runtime test confirmed search queries containing `[`, `.*`, `^((a+)+)+$`, and brackets returned HTTP 200 OK without uncaught `SyntaxError` (HTTP 500) or CPU stalls.
 - **Verification Status:** **Runtime Verified (PASSED)**.
@@ -116,6 +125,7 @@ The audit verdict is **PASS WITH FINDINGS** due to three technical observations 
 ---
 
 ### V14 — OAuth JWT Token / PII in Redirect URL & Console Logging
+
 - **Remediation Quality:** **STRONG**.
   - In `backend/src/routes/auth.js`, the OAuth callback no longer appends JWT or user profile JSON to the redirect URL. Instead, it generates a cryptographically random, single-use authorization code (`crypto.randomBytes(32).toString('hex')`) with a 60-second TTL stored in an in-memory map.
   - Added `POST /api/auth/exchange` where the frontend exchanges the authorization code for the JWT and user data. The code is immediately invalidated upon first redemption.
@@ -145,7 +155,7 @@ The following items are technical notes that require disclosure or external admi
 ## False / Unsupported Claims Review
 
 1. **Intermediate Commit Hashes in Evidence Files:**
-   Certain individual evidence files (e.g. `security/V02-hardcoded-credentials/after/evidence.md` listing `f13eed8`, `V04` listing `fd26f80`, `V06` listing `edf744a`, `V07` listing `fe18196`, `V08` listing `98a59fe`, `V05` listing `f2f704c`, `V14` listing `6043b65`) reference intermediate local commit hashes generated prior to final rebasing/committing. 
+   Certain individual evidence files (e.g. `security/V02-hardcoded-credentials/after/evidence.md` listing `f13eed8`, `V04` listing `fd26f80`, `V06` listing `edf744a`, `V07` listing `fe18196`, `V08` listing `98a59fe`, `V05` listing `f2f704c`, `V14` listing `6043b65`) reference intermediate local commit hashes generated prior to final rebasing/committing.
    - **Status:** Fully rectified in the master [PHASE-3-REMEDIATION-REPORT.md](file:///Users/gavidurushela/ssd%20ass/solar/SSD/security/PHASE-3-REMEDIATION-REPORT.md), which correctly maps each vulnerability to its canonical commit SHA in the Git log (`32ef852`, `1576a8a`, `2015a97`, `f70aea2`, `843b1af`, `d107917`, `8feb865`, `d0c7764`, `b06df01`).
 2. **Runtime Verification Accuracy:**
    The remediation report accurately avoids claiming live runtime testing for V02 (real SMTP omitted for safety), V05 (Google OAuth credentials absent), and V14 (Google OAuth credentials absent). All claims in `PHASE-3-REMEDIATION-REPORT.md` are substantiated by either live runtime logs or passing automated Jest suites.
@@ -164,6 +174,7 @@ Time:        1.718 s
 ```
 
 ### Breakdown of Test Suites
+
 - `PASS __tests__/ssrfValidator.test.js` (18 tests - IPv4, IPv6, loopback, private ranges, DNS)
 - `PASS __tests__/passportOAuth.test.js` (3 tests - OAuth role enforcement & safe linking)
 - `PASS __tests__/authExchange.test.js` (4 tests - Authorization code exchange & token safety)
@@ -186,6 +197,7 @@ Time:        1.718 s
 ## Git Integrity
 
 ### Commit History (Phase 3 Sequence)
+
 ```
 1db9c6a docs(security): generate Phase 3 security remediation report
 b06df01 fix(security): prevent OAuth token leakage through URLs and logs
@@ -200,6 +212,7 @@ f70aea2 fix(security): harden password reset token handling
 ```
 
 ### Confirmation
+
 - **Clean Working Tree:** Verified.
 - **Separate Commits:** Exactly 1 commit per vulnerability in the exact required order, followed by the remediation report.
 - **Scope Discipline:** Only necessary source files, configuration templates, evidence documents, and unit test suites were added or updated. Zero unrelated dependencies or files were touched.
@@ -209,14 +222,15 @@ f70aea2 fix(security): harden password reset token handling
 
 ## Submission Readiness
 
-| Item | Status | Action Required Prior to Final Submission |
-|:---|:---|:---|
-| Codebase Vulnerability Remediation | **COMPLETE** | None. Source code is fully patched and defensive. |
-| Regression Test Suite | **COMPLETE** | All 14 test suites pass cleanly. |
-| Remediation Report (`PHASE-3-REMEDIATION-REPORT.md`) | **COMPLETE** | Contains canonical commit hashes, master table, and disclosures. |
-| External Secret Revocation | **PENDING USER ACTION** | Account owner must revoke Google App Password in Google Account settings. |
-| Git History Sanitization | **RECOMMENDED** | Repository owner should evaluate `git-filter-repo` to redact credentials from historical commit `2e85bd2` if publicly releasing. |
+| Item                                                 | Status                  | Action Required Prior to Final Submission                                                                                        |
+| :--------------------------------------------------- | :---------------------- | :------------------------------------------------------------------------------------------------------------------------------- |
+| Codebase Vulnerability Remediation                   | **COMPLETE**            | None. Source code is fully patched and defensive.                                                                                |
+| Regression Test Suite                                | **COMPLETE**            | All 14 test suites pass cleanly.                                                                                                 |
+| Remediation Report (`PHASE-3-REMEDIATION-REPORT.md`) | **COMPLETE**            | Contains canonical commit hashes, master table, and disclosures.                                                                 |
+| External Secret Revocation                           | **PENDING USER ACTION** | Account owner must revoke Google App Password in Google Account settings.                                                        |
+| Git History Sanitization                             | **RECOMMENDED**         | Repository owner should evaluate `git-filter-repo` to redact credentials from historical commit `2e85bd2` if publicly releasing. |
 
 ---
+
 **Auditor Signature:** MEMBER 02 — White-Box Security & Code Fix Lead  
 **Audit Status:** APPROVED FOR PHASE 3 SUBMISSION (WITH DOCUMENTED FINDINGS)

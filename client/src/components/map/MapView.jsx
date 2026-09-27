@@ -100,8 +100,8 @@ const MapView = ({ stations = [], sellRequests = [], userLocation }) => {
                 <div>
                   <strong>Excess Solar Energy Offer</strong>
                   <br />
-                    Username: {request.username || 'User'}
-                    <br />
+                  Username: {request.username || 'User'}
+                  <br />
                   Energy: {request.energyAmount} kWh
                   <br />
                   Status: {request.status}

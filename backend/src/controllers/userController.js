@@ -526,7 +526,8 @@ export const resetPassword = async (req, res) => {
       await user.save();
       return res.status(429).json({
         success: false,
-        message: 'Too many failed attempts. Reset code has been invalidated. Please request a new one.',
+        message:
+          'Too many failed attempts. Reset code has been invalidated. Please request a new one.',
       });
     }
 
@@ -536,8 +537,7 @@ export const resetPassword = async (req, res) => {
     const inputBuf = Buffer.from(hashedInput);
 
     const isMatch =
-      storedBuf.length === inputBuf.length &&
-      crypto.timingSafeEqual(storedBuf, inputBuf);
+      storedBuf.length === inputBuf.length && crypto.timingSafeEqual(storedBuf, inputBuf);
 
     if (!isMatch) {
       user.passwordResetAttempts = (user.passwordResetAttempts || 0) + 1;
@@ -548,7 +548,8 @@ export const resetPassword = async (req, res) => {
         await user.save();
         return res.status(429).json({
           success: false,
-          message: 'Too many failed attempts. Reset code has been invalidated. Please request a new one.',
+          message:
+            'Too many failed attempts. Reset code has been invalidated. Please request a new one.',
         });
       }
       await user.save();

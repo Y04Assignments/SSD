@@ -3,7 +3,7 @@
 **Vulnerability:** Insecure Google OAuth Account Linking & Default Administrator Privilege Assignment  
 **OWASP Category:** A01:2021 – Broken Access Control / A04:2021 – Insecure Design  
 **Affected Component:** `backend/config/passport.js` and `backend/src/routes/auth.js`  
-**Preconditions:** Google OAuth provider configured  
+**Preconditions:** Google OAuth provider configured
 
 ---
 
@@ -39,24 +39,26 @@
 
 ## Runtime Verification Status
 
-* **Status:** **SOURCE CONFIRMED / RUNTIME BLOCKED**
-* **Runtime Verification Execution:**
+- **Status:** **SOURCE CONFIRMED / RUNTIME BLOCKED**
+- **Runtime Verification Execution:**
   Sending a request to `GET /api/auth/google` on the local backend returned:
+
   ```http
   HTTP/1.1 500 Internal Server Error
   Content-Type: application/json; charset=utf-8
 
   {"success":false,"message":"Unknown authentication strategy \"google\""}
   ```
-* **Blocker Analysis:** `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` environment variables are omitted in the clean local development setup. In `backend/config/passport.js:13`, the GoogleStrategy registration is guarded by `if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET)`. Consequently, Passport does not register the strategy at startup, preventing dynamic OAuth handshakes without live external Google API keys.
-* **Source-Level Confirmation:** The insecure role assignment (`role: 'admin'`) and unvalidated account linking logic are unambiguously present in source lines 25–46 of `backend/config/passport.js`.
+
+- **Blocker Analysis:** `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` environment variables are omitted in the clean local development setup. In `backend/config/passport.js:13`, the GoogleStrategy registration is guarded by `if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET)`. Consequently, Passport does not register the strategy at startup, preventing dynamic OAuth handshakes without live external Google API keys.
+- **Source-Level Confirmation:** The insecure role assignment (`role: 'admin'`) and unvalidated account linking logic are unambiguously present in source lines 25–46 of `backend/config/passport.js`.
 
 ---
 
 ## Observed Result vs Expected Secure Result
 
-* **Observed Code Result:** Every Google OAuth account receives `role: 'admin'`, and accounts are linked without verification of local credentials.
-* **Expected Secure Result:** New OAuth users must default to `role: 'user'`. Account linking between local and third-party identities must require proof of ownership of the existing local account (e.g. entering the existing local password).
+- **Observed Code Result:** Every Google OAuth account receives `role: 'admin'`, and accounts are linked without verification of local credentials.
+- **Expected Secure Result:** New OAuth users must default to `role: 'user'`. Account linking between local and third-party identities must require proof of ownership of the existing local account (e.g. entering the existing local password).
 
 **Impact:** Unintended universal privilege escalation to administrator for anyone authenticating via Google; potential pre-account takeover via unvalidated email linking.  
 **Source Location:** `backend/config/passport.js:25-46`.  

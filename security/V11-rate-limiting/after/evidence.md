@@ -5,23 +5,27 @@
 
 ## Source Changes
 
-* `backend/package.json` — added `helmet` and `express-rate-limit` dependencies.
-* `backend/app.js`:
+- `backend/package.json` — added `helmet` and `express-rate-limit` dependencies.
+- `backend/app.js`:
+
   ```javascript
-  app.use(helmet({
-    contentSecurityPolicy: {
-      directives: {
-        ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-        'frame-ancestors': ["'self'"],
-        'form-action': ["'self'"],
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+          'frame-ancestors': ["'self'"],
+          'form-action': ["'self'"],
+        },
       },
-    },
-  }));
+    })
+  );
 
   const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 300 });
   app.use('/api', apiLimiter);
   ```
-* `backend/src/routes/userRoutes.js`:
+
+- `backend/src/routes/userRoutes.js`:
   ```javascript
   const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 });
   router.post('/register', authLimiter, registerUser);
@@ -33,11 +37,12 @@
 ### 1. Header Inspection Request
 
 {
-    "email": "nobody@test.com",
-    "password": "wrong"
+"email": "nobody@test.com",
+"password": "wrong"
 }
 
 ### 2. Rate Limit Retest (Collection Runner, 20 iterations)
+
 Rate Limit Test — 20 requests to POST /api/users/login
 
 Iteration 01: 401
@@ -63,5 +68,5 @@ Iteration 20: 429
 
 ## Comparison: Previous Vulnerable vs Current (Expected) Behavior
 
-* **Previous Vulnerable Behavior:** No Content-Security-Policy, no anti-clickjacking protection, `X-Powered-By: Express` exposed, and unlimited request volume on every route including login and registration.
-* **Current (Expected) Behavior:** A CSP with explicit `frame-ancestors`/`form-action` fallbacks, framework header suppressed, and two-tier rate limiting (a generous app-wide ceiling plus a strict one on auth-sensitive routes).
+- **Previous Vulnerable Behavior:** No Content-Security-Policy, no anti-clickjacking protection, `X-Powered-By: Express` exposed, and unlimited request volume on every route including login and registration.
+- **Current (Expected) Behavior:** A CSP with explicit `frame-ancestors`/`form-action` fallbacks, framework header suppressed, and two-tier rate limiting (a generous app-wide ceiling plus a strict one on auth-sensitive routes).

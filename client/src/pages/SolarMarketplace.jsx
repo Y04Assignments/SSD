@@ -154,7 +154,7 @@ function SolarMarketplace() {
 
   const handleUpdateQuantity = (id, quantity) => {
     const product = products.find(item => (item._id ?? item.id) === id);
-    const maxQuantity = product ? product.stockQuantity ?? quantity : quantity;
+    const maxQuantity = product ? (product.stockQuantity ?? quantity) : quantity;
     if (quantity <= 0) {
       updateCart(prev => prev.filter(item => item.id !== id));
       return;
@@ -224,8 +224,7 @@ function SolarMarketplace() {
         (filters.availability.includes('in') && availability === 'In Stock') ||
         (filters.availability.includes('out') && availability === 'Out of Stock');
 
-      const matchesBrand =
-        filters.brands.length === 0 || filters.brands.includes(product.brand);
+      const matchesBrand = filters.brands.length === 0 || filters.brands.includes(product.brand);
 
       return (
         matchesQuery &&
@@ -309,9 +308,7 @@ function SolarMarketplace() {
       const { data } = await axios.put(`/api/products/${productId}`, payload, authConfig);
       const updated = data?.product ?? selectedProduct;
       setSelectedProduct(updated);
-      setProducts(prev =>
-        prev.map(item => ((item._id ?? item.id) === productId ? updated : item))
-      );
+      setProducts(prev => prev.map(item => ((item._id ?? item.id) === productId ? updated : item)));
       window.dispatchEvent(new Event('marketplace:products:updated'));
     } catch (error) {
       console.error('Failed to update product', error);
@@ -374,7 +371,11 @@ function SolarMarketplace() {
           </div>
 
           <div className="marketplace-search-card">
-            <SearchBar value={query} onChange={setQuery} onSubmit={event => event.preventDefault()} />
+            <SearchBar
+              value={query}
+              onChange={setQuery}
+              onSubmit={event => event.preventDefault()}
+            />
           </div>
 
           <div className="marketplace-layout">
@@ -525,9 +526,7 @@ function SolarMarketplace() {
         }
         loading={detailsLoading}
         error={detailsError}
-        canEdit={
-          Boolean(selectedProduct && user && user.role?.toLowerCase() === 'admin')
-        }
+        canEdit={Boolean(selectedProduct && user && user.role?.toLowerCase() === 'admin')}
         onUpdate={handleUpdateProduct}
         onDelete={handleDeleteProduct}
         canReview={Boolean(user && token && user.role?.toLowerCase() === 'user')}

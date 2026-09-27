@@ -174,7 +174,11 @@ function ProductDetails({
           <>
             <div className="marketplace-modal__content">
               <div className="marketplace-modal__gallery">
-                <img src={normalizeImageUrl(activeImage)} alt={product.name} onError={handleProductImageError} />
+                <img
+                  src={normalizeImageUrl(activeImage)}
+                  alt={product.name}
+                  onError={handleProductImageError}
+                />
                 <div className="marketplace-modal__thumbs">
                   {gallery.map((img, idx) => (
                     <button

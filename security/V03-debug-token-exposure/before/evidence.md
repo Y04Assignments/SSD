@@ -3,15 +3,15 @@
 **Vulnerability:** Public Exposure of Unhashed Email Verification Tokens via Debug Routes  
 **OWASP Category:** A05:2021 – Security Misconfiguration  
 **Affected Component:** `GET /api/debug/tokens` and `GET /api/debug/tokens/:email`  
-**Preconditions:** A user registration exists with an unverified email address  
+**Preconditions:** A user registration exists with an unverified email address
 
 ---
 
 ## Attack Description & Flow
 
 1. In `backend/src/routes/debug.js`, developer debug endpoints are implemented to query MongoDB for user email verification tokens:
-   * `GET /api/debug/tokens/:email` returns the email verification token and expiry timestamp for the specified email.
-   * `GET /api/debug/tokens` queries all users in the database having an `emailVerificationToken` and dumps their email, token, and expiration timestamp.
+   - `GET /api/debug/tokens/:email` returns the email verification token and expiry timestamp for the specified email.
+   - `GET /api/debug/tokens` queries all users in the database having an `emailVerificationToken` and dumps their email, token, and expiration timestamp.
 2. In `backend/app.js:71`, the router is mounted in the application root without environment guards:
    ```javascript
    app.use('/api/debug', debugRoutes);
@@ -94,8 +94,8 @@ Content-Type: application/json; charset=utf-8
 
 ## Observed Result vs Expected Secure Result
 
-* **Observed Result:** Unauthenticated HTTP requests dumped cleartext tokens from the database, allowing immediate account activation without access to the user's email inbox.
-* **Expected Secure Result:** Debug routes must never be exposed in production environments; verification tokens should be hashed (e.g., SHA-256) prior to storage, and any administrative diagnostics must enforce strict authentication and authorization.
+- **Observed Result:** Unauthenticated HTTP requests dumped cleartext tokens from the database, allowing immediate account activation without access to the user's email inbox.
+- **Expected Secure Result:** Debug routes must never be exposed in production environments; verification tokens should be hashed (e.g., SHA-256) prior to storage, and any administrative diagnostics must enforce strict authentication and authorization.
 
 **Impact:** Complete bypass of email verification security barrier; automated unauthorized account verification and activation.  
 **Source Location:** `backend/src/routes/debug.js:7-67`, `backend/app.js:71`.  

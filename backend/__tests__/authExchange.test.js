@@ -23,9 +23,7 @@ describe('V14: OAuth Code Exchange & Token Protection Tests', () => {
       expiresAt: Date.now() + 60000,
     });
 
-    const res = await request(app)
-      .post('/api/auth/exchange')
-      .send({ code: testCode });
+    const res = await request(app).post('/api/auth/exchange').send({ code: testCode });
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
@@ -42,15 +40,11 @@ describe('V14: OAuth Code Exchange & Token Protection Tests', () => {
     });
 
     // First redemption succeeds
-    const res1 = await request(app)
-      .post('/api/auth/exchange')
-      .send({ code: testCode });
+    const res1 = await request(app).post('/api/auth/exchange').send({ code: testCode });
     expect(res1.status).toBe(200);
 
     // Second redemption fails with 400
-    const res2 = await request(app)
-      .post('/api/auth/exchange')
-      .send({ code: testCode });
+    const res2 = await request(app).post('/api/auth/exchange').send({ code: testCode });
     expect(res2.status).toBe(400);
     expect(res2.body.message).toMatch(/invalid or expired/i);
   });
@@ -63,18 +57,14 @@ describe('V14: OAuth Code Exchange & Token Protection Tests', () => {
       expiresAt: Date.now() - 5000, // Expired
     });
 
-    const res = await request(app)
-      .post('/api/auth/exchange')
-      .send({ code: testCode });
+    const res = await request(app).post('/api/auth/exchange').send({ code: testCode });
 
     expect(res.status).toBe(400);
     expect(res.body.message).toMatch(/expired/i);
   });
 
   it('rejects missing or invalid code parameter', async () => {
-    const res = await request(app)
-      .post('/api/auth/exchange')
-      .send({});
+    const res = await request(app).post('/api/auth/exchange').send({});
 
     expect(res.status).toBe(400);
     expect(res.body.message).toMatch(/required/i);

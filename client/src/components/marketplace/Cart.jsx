@@ -33,7 +33,11 @@ function Cart({ isOpen, items, products, onUpdateQuantity, onRemove, onClose, on
         {cartItems.length === 0 ? (
           <div className="cart-empty">
             <p>Your cart is empty.</p>
-            <button type="button" className="marketplace-btn marketplace-btn--ghost" onClick={onClose}>
+            <button
+              type="button"
+              className="marketplace-btn marketplace-btn--ghost"
+              onClick={onClose}
+            >
               Continue Shopping
             </button>
           </div>
@@ -81,7 +85,11 @@ function Cart({ isOpen, items, products, onUpdateQuantity, onRemove, onClose, on
                 <span>Total</span>
                 <strong>{formatLKR(total)}</strong>
               </div>
-              <button type="button" className="marketplace-btn marketplace-btn--primary" onClick={onCheckout}>
+              <button
+                type="button"
+                className="marketplace-btn marketplace-btn--primary"
+                onClick={onCheckout}
+              >
                 Checkout
               </button>
             </div>

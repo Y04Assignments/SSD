@@ -144,22 +144,24 @@ describe('SellRequest Controller', () => {
     const res = mockRes();
 
     // Mock the raw requests returned by DB
-    const mockRawRequests = [{
-      _id: 'req_v08',
-      energyAmount: 50,
-      location: { type: 'Point', coordinates: [80.123456, 7.654321] },
-      comment: 'Selling solar',
-      status: 'Pending',
-      createdAt: '2023-01-01',
-      resident: { name: 'Secret User', email: 'secret@secret.com' } // PII that should be stripped
-    }];
+    const mockRawRequests = [
+      {
+        _id: 'req_v08',
+        energyAmount: 50,
+        location: { type: 'Point', coordinates: [80.123456, 7.654321] },
+        comment: 'Selling solar',
+        status: 'Pending',
+        createdAt: '2023-01-01',
+        resident: { name: 'Secret User', email: 'secret@secret.com' }, // PII that should be stripped
+      },
+    ];
 
     mockFind.mockReturnValue({
       sort: jest.fn().mockReturnValue({
         select: jest.fn().mockReturnValue({
-          lean: jest.fn().mockResolvedValue(mockRawRequests)
-        })
-      })
+          lean: jest.fn().mockResolvedValue(mockRawRequests),
+        }),
+      }),
     });
 
     await controllers.getActiveSellRequests(req, res);
@@ -167,13 +169,13 @@ describe('SellRequest Controller', () => {
     expect(res.status).toHaveBeenCalledWith(200);
     const jsonArgs = res.json.mock.calls[0][0];
     expect(jsonArgs.message).toMatch(/Active sell requests retrieved successfully/);
-    
+
     const returnedRequest = jsonArgs.requests[0];
-    
+
     // 1. Verify exact coordinates are truncated to 2 decimals
     expect(returnedRequest.location.coordinates[0]).toBe(80.12);
     expect(returnedRequest.location.coordinates[1]).toBe(7.65);
-    
+
     // 2. Verify resident object is stripped and replaced with generic username
     expect(returnedRequest.resident).toBeUndefined();
     expect(returnedRequest.username).toMatch(/Solar Seller/);
