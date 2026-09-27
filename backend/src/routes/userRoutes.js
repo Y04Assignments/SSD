@@ -8,22 +8,42 @@ import {
   resendVerificationEmail,
   forgotPassword,
   resetPassword,
+  getSessionFromCookie,
+  logoutUser,
 } from '../controllers/userController.js';
 import { protect, authorize } from '../../middleware/auth.js';
 import { validateRegister, validateLogin } from '../../middleware/validation.js';
 import { body } from 'express-validator';
+import rateLimit from 'express-rate-limit';
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // each IP may make at most 10 requests per window
+  standardHeaders: true, 
+  legacyHeaders: false, 
+});
 
 const router = express.Router();
 
 // @route   POST /api/users/register
 // @desc    Register a new user
 // @access  Public
-router.post('/register', validateRegister, register);
+router.post('/register', authLimiter,validateRegister, register);
 
 // @route   POST /api/users/login
 // @desc    Login user
 // @access  Public
-router.post('/login', validateLogin, login);
+router.post('/login', authLimiter,validateLogin, login);
+
+// @route   GET /api/users/session
+// @desc    Restore session from the httpOnly cookie on page load
+// @access  Public
+router.get('/session', getSessionFromCookie);
+
+// @route   POST /api/users/logout
+// @desc    Clear the httpOnly auth cookie
+// @access  Public
+router.post('/logout', logoutUser);
 
 // @route   GET /api/users/verify-email/:token
 // @desc    Verify email address
@@ -68,7 +88,7 @@ router.patch('/:id/role', protect, authorize('admin'), (req, res, next) => {
 // @desc    Send password reset code
 // @access  Public
 router.post(
-  '/forgot-password',
+  '/forgot-password', authLimiter,
   [body('email').isEmail().normalizeEmail().withMessage('Please provide a valid email address')],
   forgotPassword
 );
@@ -77,7 +97,7 @@ router.post(
 // @desc    Reset password with code
 // @access  Public
 router.post(
-  '/reset-password',
+  '/reset-password', authLimiter,
   [
     body('email').isEmail().normalizeEmail().withMessage('Please provide a valid email address'),
     body('resetCode').isLength({ min: 6, max: 6 }).withMessage('Reset code must be 6 digits'),

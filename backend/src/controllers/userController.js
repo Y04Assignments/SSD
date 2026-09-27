@@ -93,6 +93,56 @@ export const register = async (req, res) => {
   }
 };
 
+// @desc    Restore a session from the httpOnly cookie (used on page reload,
+//          since the token is no longer kept in localStorage)
+// @route   GET /api/users/session
+// @access  Public (but requires the httpOnly cookie to return anything)
+export const getSessionFromCookie = async (req, res) => {
+  try {
+    const cookieToken = req.cookies?.token;
+
+    if (!cookieToken) {
+      // No cookie present — this just means the user isn't logged in;
+      // it is NOT an error state, so respond 200 with a null session.
+      return res.status(200).json({ success: true, data: { user: null, token: null } });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(cookieToken, process.env.JWT_SECRET);
+    } catch {
+      // Cookie is invalid or expired — clear it and report no session.
+      res.clearCookie('token');
+      return res.status(200).json({ success: true, data: { user: null, token: null } });
+    }
+
+    const userId = typeof decoded === 'string' ? decoded : decoded.id || decoded.userId;
+    const user = await User.findById(userId);
+
+    if (!user) {
+      res.clearCookie('token');
+      return res.status(200).json({ success: true, data: { user: null, token: null } });
+    }
+
+    return success(res, {
+      status: 200,
+      message: 'Session restored',
+      data: {
+        user: {
+          id: user._id,
+          email: user.email,
+          role: user.role,
+          isEmailVerified: user.isEmailVerified,
+        },
+        token: cookieToken, // hand the same token back for the frontend's in-memory state
+      },
+    });
+  } catch (error) {
+    logError('Session restore error', error);
+    return fail(res, { message: 'Server error while restoring session', status: 500 });
+  }
+};
+
 // @desc    Login user
 // @route   POST /api/users/login
 // @access  Public
@@ -137,6 +187,14 @@ export const login = async (req, res) => {
 
     // Generate token
     const token = generateToken(user._id);
+
+    // Set JWT as an httpOnly cookie so client side can never read it (protects against XSS attacks). The cookie is sent automatically with every request to the backend, so the backend can verify the user is logged in.
+    res.cookie('token', token, {
+      httpOnly: true, // JavaScript's `document.cookie` cannot see this cookie at all
+      secure: process.env.NODE_ENV === 'production', // only sent over HTTPS in production
+      sameSite: 'lax', // sent on normal navigation, blocked on most cross-site requests (CSRF hardening)
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days, matching the JWT's own expiry
+    });
 
     return success(res, {
       status: 200,
@@ -593,4 +651,12 @@ export const updateUserRole = async (req, res) => {
       error: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
   }
+};
+
+// @desc    Log out: clear the httpOnly auth cookie
+// @route   POST /api/users/logout
+// @access  Public
+export const logoutUser = async (req, res) => {
+  res.clearCookie('token');
+  return success(res, { status: 200, message: 'Logged out successfully' });
 };
