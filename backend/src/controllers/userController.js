@@ -29,7 +29,7 @@ const generateToken = id => {
   }
   // @ts-ignore
   return jwt.sign({ id }, secret, {
-    expiresIn: process.env.JWT_EXPIRE || '30d',
+    expiresIn: process.env.JWT_EXPIRE || '1d',
   });
 };
 
@@ -92,7 +92,6 @@ export const register = async (req, res) => {
     return fail(res, { message: 'Server error during registration', status: 500 });
   }
 };
-
 // @desc    Restore a session from the httpOnly cookie (used on page reload,
 //          since the token is no longer kept in localStorage)
 // @route   GET /api/users/session
