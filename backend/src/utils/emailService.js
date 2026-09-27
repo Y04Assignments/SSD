@@ -157,7 +157,9 @@ export const sendPasswordResetEmail = async (user, resetCode) => {
   try {
     // If email credentials are not configured, skip outbound email
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-      logInfo('EMAIL_USER or EMAIL_PASS not configured. Skipping password reset email transmission.');
+      logInfo(
+        'EMAIL_USER or EMAIL_PASS not configured. Skipping password reset email transmission.'
+      );
       return true;
     }
 

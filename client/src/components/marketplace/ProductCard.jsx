@@ -13,13 +13,7 @@ const renderStars = rating => {
   });
 };
 
-function ProductCard({
-  product,
-  onViewDetails,
-  onAddToCart,
-  onToggleWishlist,
-  isWishlisted,
-}) {
+function ProductCard({ product, onViewDetails, onAddToCart, onToggleWishlist, isWishlisted }) {
   const inStock = product.availabilityStatus
     ? product.availabilityStatus === 'In Stock'
     : product.stockQuantity > 0;

@@ -3,7 +3,7 @@
 **Vulnerability:** Weak PRNG, Low-Entropy 6-Digit PIN, Plaintext Storage, and Lack of Rate Limiting in Password Reset  
 **OWASP Category:** A07:2021 – Identification and Authentication Failures  
 **Affected Component:** `POST /api/users/forgot-password` and `POST /api/users/reset-password`  
-**Preconditions:** A registered user account  
+**Preconditions:** A registered user account
 
 ---
 
@@ -19,11 +19,11 @@
    await user.save();
    ```
 3. Weaknesses identified in code and architecture:
-   * **Predictable PRNG:** `Math.random()` is not cryptographically secure and can be predicted.
-   * **Low Entropy:** A 6-digit code has only 900,000 possibilities (100000–999999).
-   * **Plaintext Storage:** The code is stored unhashed in the database (`passwordResetToken`).
-   * **Absence of Rate Limiting / Lockout:** The reset endpoint has no attempt tracking, lockout, or IP rate limiting.
-   * **Code Not Invalidated on Failure:** Submitting incorrect guesses does not invalidate the active code or decrement an attempt counter.
+   - **Predictable PRNG:** `Math.random()` is not cryptographically secure and can be predicted.
+   - **Low Entropy:** A 6-digit code has only 900,000 possibilities (100000–999999).
+   - **Plaintext Storage:** The code is stored unhashed in the database (`passwordResetToken`).
+   - **Absence of Rate Limiting / Lockout:** The reset endpoint has no attempt tracking, lockout, or IP rate limiting.
+   - **Code Not Invalidated on Failure:** Submitting incorrect guesses does not invalidate the active code or decrement an attempt counter.
 
 ---
 
@@ -79,10 +79,10 @@ HTTP Status: 400 Bad Request
 ...
 ```
 
-* **Rate Limiting Observed:** None (0.001s latency per request, no 429 status returned).
-* **Account Lockout Observed:** None.
-* **Attempt Counter in DB:** `NO_ATTEMPT_COUNTER_EXISTS`.
-* **Token State:** Token `'643104'` remained valid and active in database after failed attempts.
+- **Rate Limiting Observed:** None (0.001s latency per request, no 429 status returned).
+- **Account Lockout Observed:** None.
+- **Attempt Counter in DB:** `NO_ATTEMPT_COUNTER_EXISTS`.
+- **Token State:** Token `'643104'` remained valid and active in database after failed attempts.
 
 ### 4. Successful Password Reset with Original Token
 
@@ -107,8 +107,8 @@ Subsequent login with `BrandNewPassword123!` was authenticated with HTTP 200 OK.
 
 ## Observed Result vs Expected Secure Result
 
-* **Observed Result:** 6-digit PIN stored in cleartext; failed guesses did not throttle the client, trigger backoff, or invalidate the token; valid code remained redeemable.
-* **Expected Secure Result:** Reset tokens must be generated using `crypto.randomBytes()`, cryptographically hashed (SHA-256) before database storage, subject to strict rate-limiting (e.g. 3 attempts max), and automatically invalidated upon 3 consecutive failed verification attempts.
+- **Observed Result:** 6-digit PIN stored in cleartext; failed guesses did not throttle the client, trigger backoff, or invalidate the token; valid code remained redeemable.
+- **Expected Secure Result:** Reset tokens must be generated using `crypto.randomBytes()`, cryptographically hashed (SHA-256) before database storage, subject to strict rate-limiting (e.g. 3 attempts max), and automatically invalidated upon 3 consecutive failed verification attempts.
 
 **Impact:** Account takeover via brute-force enumeration of 6-digit reset codes within the 10-minute validity window.  
 **Source Location:** `backend/src/controllers/userController.js:356-361, 417-435`.  

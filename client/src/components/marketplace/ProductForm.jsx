@@ -128,7 +128,8 @@ function ProductForm({ initialValues, onSubmit, onCancel, submitLabel, loading, 
 
         finalUrl = normalizeImageUrl(data?.imageUrl || normalized);
       } catch (error) {
-        const message = error?.response?.data?.message || 'Could not extract preview image from URL.';
+        const message =
+          error?.response?.data?.message || 'Could not extract preview image from URL.';
         alert(message);
         return;
       } finally {

@@ -135,8 +135,7 @@ if (FACEBOOK_CLIENT_ID && FACEBOOK_CLIENT_SECRET) {
         clientID: FACEBOOK_CLIENT_ID,
         clientSecret: FACEBOOK_CLIENT_SECRET,
         callbackURL:
-          process.env.FACEBOOK_CALLBACK_URL ||
-          'http://localhost:5001/api/auth/facebook/callback',
+          process.env.FACEBOOK_CALLBACK_URL || 'http://localhost:5001/api/auth/facebook/callback',
         profileFields: ['id', 'displayName', 'email'],
         state: true,
       },
@@ -152,8 +151,10 @@ if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET) {
       {
         clientID: GOOGLE_CLIENT_ID,
         clientSecret: GOOGLE_CLIENT_SECRET,
-        callbackURL: process.env.GOOGLE_CALLBACK_URL || 'http://localhost:5001/api/auth/google/callback',
+        callbackURL:
+          process.env.GOOGLE_CALLBACK_URL || 'http://localhost:5001/api/auth/google/callback',
         scope: ['profile', 'email'],
+        state: true, // CSRF protection
       },
       handleGoogleAuth
     )

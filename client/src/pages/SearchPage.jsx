@@ -99,8 +99,8 @@ const SearchPage = () => {
             <span className="section-tag">Live Solar Charging Map</span>
             <h1 className="page-title">Search Solar Friendly Stations</h1>
             <p className="page-subtitle">
-              Use smart filters, view live availability, and share stations with friends  all in
-              the same polished experience as the homepage.
+              Use smart filters, view live availability, and share stations with friends all in the
+              same polished experience as the homepage.
             </p>
           </div>
 

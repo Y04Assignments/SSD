@@ -65,15 +65,13 @@ router.get(
         maxAge: 30 * 24 * 60 * 60 * 1000,
       });
 
-      const frontendUrl =
-        process.env.FRONTEND_URL || 'http://localhost:3000';
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
 
       res.redirect(`${frontendUrl}/oauth/callback?code=${authCode}`);
     } catch (error) {
       console.error('Facebook OAuth callback error:', error);
 
-      const frontendUrl =
-        process.env.FRONTEND_URL || 'http://localhost:3000';
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
 
       res.redirect(`${frontendUrl}/auth?error=auth_failed`);
     }
@@ -152,9 +150,7 @@ router.post('/exchange', async (req, res) => {
     oauthAuthCodes.delete(code);
 
     if (entry.expiresAt <= Date.now()) {
-      return res
-        .status(400)
-        .json({ success: false, message: 'Authorization code has expired' });
+      return res.status(400).json({ success: false, message: 'Authorization code has expired' });
     }
 
     return res.status(200).json({

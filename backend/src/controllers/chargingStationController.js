@@ -94,7 +94,14 @@ export const updateChargingStation = async (req, res, next) => {
     const { latitude, longitude, connectors, photos, ...rest } = req.body;
 
     // Mass update assignment fix: only allow certain fields to be updated
-    const STATION_EDITABLE_FIELDS = ['name', 'description', 'address', 'city', 'district', 'status'];
+    const STATION_EDITABLE_FIELDS = [
+      'name',
+      'description',
+      'address',
+      'city',
+      'district',
+      'status',
+    ];
     const updateData = pickAllowedFields(req.body, STATION_EDITABLE_FIELDS);
 
     //if lat/lng provided - update location

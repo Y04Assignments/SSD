@@ -3,7 +3,7 @@
 **Vulnerability:** Unrestricted Server-Side Request Forgery in Product Image Resolver  
 **OWASP Category:** A10:2021 – Server-Side Request Forgery (SSRF)  
 **Affected Component:** `GET /api/products/resolve-image?url=<target>`  
-**Preconditions:** Authenticated admin session (obtainable via V01 mass assignment or OAuth)  
+**Preconditions:** Authenticated admin session (obtainable via V01 mass assignment or OAuth)
 
 ---
 
@@ -101,8 +101,8 @@ The controlled listener on `127.0.0.1:8888` captured incoming requests originati
 
 ## Observed Result vs Expected Secure Result
 
-* **Observed Result:** SolarCharge-Finder made outbound HTTP HEAD and GET requests to internal loopback `127.0.0.1:8888`, parsed the internal response, and reflected content back to the client.
-* **Expected Secure Result:** The server must resolve target hostnames to IP addresses prior to connecting, validate IPs against private, loopback, and link-local ranges, disallow internal IP destinations, and reject redirects to prohibited destinations.
+- **Observed Result:** SolarCharge-Finder made outbound HTTP HEAD and GET requests to internal loopback `127.0.0.1:8888`, parsed the internal response, and reflected content back to the client.
+- **Expected Secure Result:** The server must resolve target hostnames to IP addresses prior to connecting, validate IPs against private, loopback, and link-local ranges, disallow internal IP destinations, and reject redirects to prohibited destinations.
 
 **Impact:** Internal port scanning, SSRF against internal microservices, database/management ports, and cloud instance metadata exfiltration.  
 **Source Location:** `backend/src/controllers/productController.js:42-98`, `backend/src/routes/productRoutes.js:17`.  

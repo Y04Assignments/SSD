@@ -4,8 +4,8 @@ import useAuth from '../context/useAuth';
 import './AuthPage.css';
 
 const socialProviders = [
-  { id: 'google', label: 'Continue with Google', icon: 'images/google_logo.svg', text: 'G' }, 
-  { id: 'facebook', label: 'Continue with Facebook', icon: 'images/facebook_logo.svg', text: 'f' }
+  { id: 'google', label: 'Continue with Google', icon: 'images/google_logo.svg', text: 'G' },
+  { id: 'facebook', label: 'Continue with Facebook', icon: 'images/facebook_logo.svg', text: 'f' },
 ];
 
 const validators = {
@@ -70,7 +70,7 @@ function AuthPage() {
       </button>
     ));
 
-  const handleSocialLogin = (providerId) => {
+  const handleSocialLogin = providerId => {
     const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
     window.location.href = `${API_BASE.replace(/\/$/, '')}/auth/${providerId}`;
   };
