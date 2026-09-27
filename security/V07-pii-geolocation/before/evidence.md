@@ -3,7 +3,7 @@
 **Vulnerability:** Unauthenticated Exposure of Private Resident Emails and Exact GPS Geolocation  
 **OWASP Category:** A01:2021 – Broken Access Control / Sensitive Data Exposure  
 **Affected Component:** `GET /api/sell-request/map`  
-**Preconditions:** An active pending sell request in the database  
+**Preconditions:** An active pending sell request in the database
 
 ---
 
@@ -16,6 +16,7 @@
    router.get('/map', getActiveSellRequests);
    ```
 4. In `backend/src/controllers/sellRequestController.js:4-26`:
+
    ```javascript
    export const getActiveSellRequests = async (req, res) => {
      const rawRequests = await SellRequest.find({ status: 'Pending' })
@@ -34,6 +35,7 @@
        createdAt: request.createdAt,
      }));
    ```
+
 5. `resident: request.resident` preserves the entire populated user object (`_id`, `name`, and `email`), and `location` contains exact floating-point GPS coordinates `[longitude, latitude]`.
 6. Any anonymous internet scraper can poll `GET /api/sell-request/map` and compile a database mapping physical home addresses to personal email addresses and home solar setups.
 
@@ -104,17 +106,18 @@ Content-Type: application/json; charset=utf-8
 ```
 
 Exposed fields:
-* `resident.email` (`"test_admin@test.com"`)
-* `resident._id` (`"6ab6e7795e89b106943f7a94"`)
-* `location.coordinates` (`[79.8612, 6.9271]`)
-* `comment` (`"Private residential solar rooftop - test seller"`)
+
+- `resident.email` (`"test_admin@test.com"`)
+- `resident._id` (`"6ab6e7795e89b106943f7a94"`)
+- `location.coordinates` (`[79.8612, 6.9271]`)
+- `comment` (`"Private residential solar rooftop - test seller"`)
 
 ---
 
 ## Observed Result vs Expected Secure Result
 
-* **Observed Result:** Full personal email addresses, user IDs, and precise residential GPS coordinates are exposed to unauthenticated callers.
-* **Expected Secure Result:** Public map APIs must only disclose anonymized metadata (e.g. non-identifying seller handle); coordinates must be fuzzed or truncated to neighborhood/city level to protect physical home privacy; direct resident email addresses must never be exposed publicly.
+- **Observed Result:** Full personal email addresses, user IDs, and precise residential GPS coordinates are exposed to unauthenticated callers.
+- **Expected Secure Result:** Public map APIs must only disclose anonymized metadata (e.g. non-identifying seller handle); coordinates must be fuzzed or truncated to neighborhood/city level to protect physical home privacy; direct resident email addresses must never be exposed publicly.
 
 **Impact:** Severe privacy violation, physical tracking/doxing of home owners, targeted phishing, and physical theft risk.  
 **Source Location:** `backend/src/controllers/sellRequestController.js:4-26`, `backend/src/routes/sellRequestRoutes.js:14`.  

@@ -3,7 +3,7 @@
 **Vulnerability:** Unsanitized Regular Expression Construction in Station Search  
 **OWASP Category:** A03:2021 – Injection  
 **Affected Component:** `GET /api/stations/search?search=<query>` and `GET /api/stations/distance-search`  
-**Preconditions:** None (public search endpoints)  
+**Preconditions:** None (public search endpoints)
 
 ---
 
@@ -20,9 +20,9 @@
    ```
 2. User-supplied query string parameter `search` is passed directly into `new RegExp(search, 'i')` without escaping regex meta-characters (`[`, `(`, `*`, `+`, `?`, etc.).
 3. **Regex Injection Impact:**
-   * Passing malformed regular expression syntax (such as an unclosed bracket `[` or parenthesis `(`) causes the JavaScript V8 engine to throw an unhandled `SyntaxError: Invalid regular expression`.
-   * The exception is caught by a generic try-catch block, aborts database search execution, logs a full stack trace to the console, and returns an internal server error `HTTP 500` to the client.
-   * Passing unconstrained wildcard patterns (`.*`) alters the expected search semantics to return all records across three indexed fields simultaneously.
+   - Passing malformed regular expression syntax (such as an unclosed bracket `[` or parenthesis `(`) causes the JavaScript V8 engine to throw an unhandled `SyntaxError: Invalid regular expression`.
+   - The exception is caught by a generic try-catch block, aborts database search execution, logs a full stack trace to the console, and returns an internal server error `HTTP 500` to the client.
+   - Passing unconstrained wildcard patterns (`.*`) alters the expected search semantics to return all records across three indexed fields simultaneously.
 
 ---
 
@@ -53,6 +53,7 @@ Content-Type: application/json; charset=utf-8
 ```
 
 **Captured Server Error Log:**
+
 ```
 Search error: SyntaxError: Invalid regular expression: /[/i: Unterminated character class
     at new RegExp (<anonymous>)
@@ -86,9 +87,9 @@ Time: 0.003711s
 
 ## Observed Result vs Expected Secure Result
 
-* **Observed Result:** Submitting raw regex meta-characters triggered unhandled `SyntaxError` in `new RegExp()`, crashing search query execution and causing a 500 Internal Server Error with server error logging.
-* **Expected Secure Result:** All user query inputs must be sanitized using a regex escaping utility (e.g. `search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')`) before being passed to `new RegExp()`, ensuring special regex characters are treated as literal characters.
-* **Assignment Evidence Standard Note:** Runtime testing confirmed **Regex Injection** producing unhandled syntax crashes and query disruption (HTTP 500). In accordance with instructions, this is accurately reported as **Regex Injection / Application Query Denial of Service** rather than claiming catastrophic server-wide freeze.
+- **Observed Result:** Submitting raw regex meta-characters triggered unhandled `SyntaxError` in `new RegExp()`, crashing search query execution and causing a 500 Internal Server Error with server error logging.
+- **Expected Secure Result:** All user query inputs must be sanitized using a regex escaping utility (e.g. `search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')`) before being passed to `new RegExp()`, ensuring special regex characters are treated as literal characters.
+- **Assignment Evidence Standard Note:** Runtime testing confirmed **Regex Injection** producing unhandled syntax crashes and query disruption (HTTP 500). In accordance with instructions, this is accurately reported as **Regex Injection / Application Query Denial of Service** rather than claiming catastrophic server-wide freeze.
 
 **Impact:** Application-level denial of service on station searching, error disclosure, and search logic manipulation.  
 **Source Location:** `backend/src/controllers/stationController.js:12, 20, 79, 87`.  

@@ -27,10 +27,10 @@ dotenv.config();
 const app = express();
 
 const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, 
-  max: 300,  
-  standardHeaders: true,    
-  legacyHeaders: false,     
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
   message: { success: false, message: 'Too many requests, please try again later.' },
 });
 
@@ -63,14 +63,14 @@ app.use(cookieParser()); //Parses the cookie header on incoming requests into re
 
 // Helmet sets a broad set of security headers with one call.
 // The contentSecurityPolicy block below explicitly adds `frame-ancestors` and `form-action`, the two directives obtained
-// from the ZAP scan flagged as missing a safe fallback 
+// from the ZAP scan flagged as missing a safe fallback
 app.use(
   helmet({
     contentSecurityPolicy: {
       directives: {
         ...helmet.contentSecurityPolicy.getDefaultDirectives(),
         'frame-ancestors': ["'self'"], // only your own site may frame these pages (anti-clickjacking)
-        'form-action': ["'self'"],     // forms on this site may only submit back to this site
+        'form-action': ["'self'"], // forms on this site may only submit back to this site
       },
     },
   })
@@ -80,7 +80,9 @@ app.use('/api/', apiLimiter); // Apply rate limiting to all API routes
 
 const sessionSecret = process.env.SESSION_SECRET || process.env.JWT_SECRET;
 if (!sessionSecret && process.env.NODE_ENV === 'production') {
-  throw new Error('FATAL: SESSION_SECRET or JWT_SECRET environment variable is required in production');
+  throw new Error(
+    'FATAL: SESSION_SECRET or JWT_SECRET environment variable is required in production'
+  );
 }
 
 // In non-production, generate an ephemeral random secret if not provided in environment

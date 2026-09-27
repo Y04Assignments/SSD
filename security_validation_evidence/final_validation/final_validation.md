@@ -1,4 +1,5 @@
 # Final Security Validation Report
+
 ## SE4030 Secure Software Development — SolarCharge-Finder
 
 **Validator:** Security Validation & QA Lead (Member 03)  
@@ -14,6 +15,7 @@
 
 This report documents independent security validation of 9 vulnerabilities identified and
 fixed by the SolarCharge-Finder development team. All fixes confirmed via:
+
 - Static source code analysis
 - Live API testing (curl to running backend)
 - Automated regression unit tests (81 tests, 0 failures)
@@ -25,6 +27,7 @@ fixed by the SolarCharge-Finder development team. All fixes confirmed via:
 ## Validation Results
 
 ### VULN-01: Mass Assignment to Admin Role
+
 - Fix Commit: 32ef852
 - BEFORE: validation.js allowed role:'admin' from request body; controller used `role || 'user'`
 - AFTER: Role field removed from validator; controller hardcodes `role: 'user'`
@@ -33,22 +36,25 @@ fixed by the SolarCharge-Finder development team. All fixes confirmed via:
 - Result: PASS
 
 ### VULN-02: Hardcoded Credentials and Secrets
+
 - Fix Commits: 8feb865, 9e39d8e
 - BEFORE: Gmail credentials + MongoDB URI hardcoded in source; hardcoded session fallback
-- AFTER: All from process.env.*; crypto.randomBytes() for dev fallback; production throws if missing
+- AFTER: All from process.env.\*; crypto.randomBytes() for dev fallback; production throws if missing
 - Validation: Static code inspection confirms no hardcoded secrets in current code
 - Limitation: SMTP not tested (no credentials available)
 - Result: PASS
 
 ### VULN-03: Public Debug Endpoint Exposing Verification Tokens
+
 - Fix Commit: 1576a8a
 - BEFORE: GET /api/debug/tokens returned all verification tokens publicly
-- AFTER: debug.js uses router.all('*') returning 404; route not mounted in app.js
+- AFTER: debug.js uses router.all('\*') returning 404; route not mounted in app.js
 - Live Test: GET /api/debug/tokens -> HTTP 404; GET /api/debug/tokens/:email -> HTTP 404
 - Screenshots: VULN_03/after/01_debug_tokens_404_after.png, 02_debug_tokens_email_404_after.png
 - Result: PASS
 
 ### VULN-04: Server-Side Request Forgery (SSRF)
+
 - Fix Commit: 2015a97
 - BEFORE: Only protocol check; no IP range validation; arbitrary internal URLs fetched
 - AFTER: ssrfValidator.js blocks RFC1918, loopback, cloud metadata, localhost, IPv6 private
@@ -57,6 +63,7 @@ fixed by the SolarCharge-Finder development team. All fixes confirmed via:
 - Result: PASS
 
 ### VULN-05: Insecure Default Role in Google OAuth
+
 - Fix Commit: d0c7764
 - BEFORE: passport.js set role:'admin' for all OAuth users; User model defaulted to 'admin'
 - AFTER: role:'user' hardcoded; model default changed; unverified accounts blocked from linking
@@ -65,6 +72,7 @@ fixed by the SolarCharge-Finder development team. All fixes confirmed via:
 - Result: PASS
 
 ### VULN-06: Insecure Password Reset Token
+
 - Fix Commit: f70aea2
 - BEFORE: Math.random() PRNG; plaintext storage; no rate limiting; timing-unsafe comparison
 - AFTER: crypto.randomInt() CSPRNG; SHA-256 hash; 5-attempt lockout; timingSafeEqual; invalidated after use
@@ -73,6 +81,7 @@ fixed by the SolarCharge-Finder development team. All fixes confirmed via:
 - Result: PASS
 
 ### VULN-07: Unauthenticated PII and Geolocation Exposure
+
 - Fix Commit: 843b1af
 - BEFORE: GET /api/sell-request/map returned resident.name, resident.email, exact GPS publicly
 - AFTER: No populate; coordinates fuzzed to 2 decimal places; "Solar Seller #XXXX" identifier
@@ -82,6 +91,7 @@ fixed by the SolarCharge-Finder development team. All fixes confirmed via:
 - Result: PASS
 
 ### VULN-08: RegExp Denial of Service (ReDoS)
+
 - Fix Commit: d107917
 - BEFORE: new RegExp(search, 'i') compiled raw user input; SyntaxError / catastrophic backtracking possible
 - AFTER: escapeRegex() escapes all metacharacters before RegExp compilation
@@ -91,6 +101,7 @@ fixed by the SolarCharge-Finder development team. All fixes confirmed via:
 - Result: PASS
 
 ### VULN-14: OAuth Token Leakage via URL
+
 - Fix Commit: b06df01
 - BEFORE: Full JWT in URL query string (?token=eyJhbGci...); visible in logs, history, referrer headers
 - AFTER: One-time 256-bit authorization code (?code=...) with 60s TTL; JWT via HttpOnly cookie
@@ -106,9 +117,9 @@ Command: npm test -- --forceExit --verbose
 Directory: backend/
 
 Test Suites: 14 passed, 14 total
-Tests:       81 passed, 81 total  
-Time:        2.298s
-Exit Code:   0 (SUCCESS)
+Tests: 81 passed, 81 total  
+Time: 2.298s
+Exit Code: 0 (SUCCESS)
 
 No regressions detected.
 

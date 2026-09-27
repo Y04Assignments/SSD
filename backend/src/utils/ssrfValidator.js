@@ -68,12 +68,7 @@ export const isPrivateOrReservedIPv6 = ip => {
       const h1 = parseInt(hexParts[0], 16);
       const h2 = parseInt(hexParts[1], 16);
       if (!isNaN(h1) && !isNaN(h2)) {
-        const v4 = [
-          (h1 >> 8) & 255,
-          h1 & 255,
-          (h2 >> 8) & 255,
-          h2 & 255,
-        ].join('.');
+        const v4 = [(h1 >> 8) & 255, h1 & 255, (h2 >> 8) & 255, h2 & 255].join('.');
         return isPrivateOrReservedIPv4(v4);
       }
     }
@@ -87,12 +82,7 @@ export const isPrivateOrReservedIPv6 = ip => {
       const h1 = parseInt(segments[1], 16);
       const h2 = parseInt(segments[2], 16);
       if (!isNaN(h1) && !isNaN(h2)) {
-        const v4 = [
-          (h1 >> 8) & 255,
-          h1 & 255,
-          (h2 >> 8) & 255,
-          h2 & 255,
-        ].join('.');
+        const v4 = [(h1 >> 8) & 255, h1 & 255, (h2 >> 8) & 255, h2 & 255].join('.');
         if (isPrivateOrReservedIPv4(v4)) return true;
       }
     }

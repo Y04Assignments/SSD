@@ -4,7 +4,14 @@ function SearchBar({ value, onChange, onSubmit }) {
   return (
     <form className="marketplace-search" onSubmit={onSubmit}>
       <span className="marketplace-search__icon" aria-hidden="true">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2">
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#64748b"
+          strokeWidth="2"
+        >
           <circle cx="11" cy="11" r="8" />
           <path d="M21 21l-4.35-4.35" />
         </svg>

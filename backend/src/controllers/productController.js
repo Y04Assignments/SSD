@@ -300,8 +300,10 @@ export const updateProduct = async (req, res) => {
 
     // Trim string fields exactly as before, but only if the client sent them.
     if (updates.name !== undefined) updates.name = updates.name?.trim();
-    if (updates.shortDescription !== undefined) updates.shortDescription = updates.shortDescription?.trim();
-    if (updates.fullDescription !== undefined) updates.fullDescription = updates.fullDescription?.trim();
+    if (updates.shortDescription !== undefined)
+      updates.shortDescription = updates.shortDescription?.trim();
+    if (updates.fullDescription !== undefined)
+      updates.fullDescription = updates.fullDescription?.trim();
     if (updates.brand !== undefined) updates.brand = updates.brand?.trim();
 
     if (updates.technicalSpecifications !== undefined) {

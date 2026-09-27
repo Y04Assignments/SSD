@@ -51,7 +51,8 @@ describe('V05: Google OAuth Security & Role Assignment Tests', () => {
     };
 
     // First findOne for googleId returns null, second findOne for email returns unverifiedUser
-    const mockFindOne = jest.spyOn(User, 'findOne')
+    const mockFindOne = jest
+      .spyOn(User, 'findOne')
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce(unverifiedUser);
 
@@ -82,7 +83,8 @@ describe('V05: Google OAuth Security & Role Assignment Tests', () => {
       save: jest.fn(async () => true),
     };
 
-    const mockFindOne = jest.spyOn(User, 'findOne')
+    const mockFindOne = jest
+      .spyOn(User, 'findOne')
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce(verifiedUser);
 
