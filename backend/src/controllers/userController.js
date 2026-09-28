@@ -92,7 +92,6 @@ export const register = async (req, res) => {
     return fail(res, { message: 'Server error during registration', status: 500 });
   }
 };
-
 // @desc    Restore a session from the httpOnly cookie (used on page reload,
 //          since the token is no longer kept in localStorage)
 // @route   GET /api/users/session
@@ -190,10 +189,10 @@ export const login = async (req, res) => {
 
     // Set JWT as an httpOnly cookie so client side can never read it (protects against XSS attacks). The cookie is sent automatically with every request to the backend, so the backend can verify the user is logged in.
     res.cookie('token', token, {
-      httpOnly: true, 
+      httpOnly: true, // JavaScript's `document.cookie` cannot see this cookie at all
       secure: process.env.NODE_ENV === 'production', // only sent over HTTPS in production
       sameSite: 'lax', // sent on normal navigation, blocked on most cross-site requests (CSRF hardening)
-      maxAge: 24 * 60 * 60 * 1000, // 1 day, matching the JWT's own expiry
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days, matching the JWT's own expiry
     });
 
     return success(res, {
